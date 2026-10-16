@@ -27,18 +27,23 @@ class MockERP:
         return f"{prefix}-{self._seq[prefix]:04d}"
 
     # ---------- items ----------
-    def items(self) -> list[dict]:
-        """One row per SKU (status, price, total availability)."""
+    @staticmethod
+    def _rollup(lots: list[dict]) -> list[dict]:
         out: dict[str, dict] = {}
-        for l in self.lots:
+        for l in lots:
             it = out.setdefault(l["sku"], {k: l[k] for k in ("sku", "fabric", "color", "status", "list_price")}
                                 | {"available": 0.0, "on_hand": 0.0})
             it["available"] += max(l["on_hand"] - l["reserved"], 0)
             it["on_hand"] += l["on_hand"]
         return list(out.values())
 
+    def items(self) -> list[dict]:
+        """One row per SKU (status, price, total availability across its dye lots)."""
+        return self._rollup(self.lots)
+
     def get_item(self, sku: str) -> dict | None:
-        return next((i for i in self.items() if i["sku"] == sku), None)
+        rows = self._rollup(self.lots_for(sku))
+        return rows[0] if rows else None
 
     def lots_for(self, sku: str) -> list[dict]:
         return [l for l in self.lots if l["sku"] == sku]

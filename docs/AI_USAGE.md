@@ -28,4 +28,6 @@ Built with **Claude** as a coding agent. I gave it the case study and the workbo
 - **First UI was hard to follow.** Emoji status strings, raw JSON panels and every stage shown even when n/a. Rebuilt as a request list plus a top-to-bottom story per request, with review actions next to the issue they resolve.
 - **UI.** Streamlit rendered "$34,912 > $20,000" as LaTeX math. Fixed by escaping `$`.
 
+- **Demo layer.** Claude also built the walkthrough app (mock storefront, CRM, ERP, old-vs-new pages) on top of the same workflow, and the README diagrams. The old-process numbers in `s2q/baseline.py` are estimates it proposed and I labelled as such.
+
 <!-- Add your own notes here: anything you changed, decisions you'd defend differently, time spent. -->

@@ -2,6 +2,8 @@
 
 ## 1. Architecture
 
+The README opens with the old-flow vs new-flow diagrams and a table of each change with where it would run. This section is the technical view.
+
 ```
  Website (WooCommerce cart) ──webhook──┐
  Shared inbox (quotes@)  ──poll/push───┤

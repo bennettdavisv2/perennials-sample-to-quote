@@ -21,7 +21,7 @@ from . import emails, identity, qualify
 from .adapters import MockCRM, MockERP
 from .audit import AuditLog
 from .data import DEFAULT_DATA, load_workbook
-from .extract import Extractor, is_free_email
+from .extract import Extractor
 from .pricing import to_yards
 
 STAGES = {1: "Sample request", 2: "Lead qualification", 3: "Sample order + Opportunity",
@@ -53,6 +53,11 @@ class Workflow:
     def process_all(self):
         while self.pending():
             self.process_next()
+
+    def submit(self, req: dict) -> dict:
+        """A live request (demo storefront checkout or the quotes@ inbox) joins the inbox and runs now."""
+        self.inbox.append(req)
+        return self.process(req)
 
     def process(self, req: dict) -> dict:
         self.log.current_request, self.log.clock = req["id"], req["received"]
