@@ -207,3 +207,44 @@ def test_web_quote_form_with_cfa_and_feet():
     cfa = next(s for s in w.erp.sales_orders if s["id"] == q["cfa_order_id"])
     assert cfa["type"] == "CFA" and cfa["lines"][0]["sku"] == "PF-1006"
     assert res["extraction"]["need_by"] == "2026-11-20"
+
+
+# ---------- every review comes with a drafted customer message ----------
+def test_every_review_has_a_drafted_message(wf):
+    assert wf.reviews and all(rv["message"] and rv["message"]["body"] for rv in wf.reviews)
+
+
+def test_gray_zone_lead_drafts_trade_verification_and_stays_open_until_decided():
+    w = Workflow(mode="rules")
+    w.process_all()
+    rv = next(r for r in w.reviews if r["request"] == "WEB-012")
+    assert "resale certificate" in rv["message"]["body"] and "Velvet Plush - Garnet" in rv["message"]["body"]
+    w.ask(rv["id"])
+    assert rv["asked"] and rv["status"] == "Open"                        # the customer's reply decides it
+    assert any(e["action"] == "Email question" and e["request"] == "WEB-012" for e in w.log.events)
+    w.approve(rv["id"])                                                  # proof arrived: qualify and ship
+    assert w.results["WEB-012"]["outcome"].startswith("Samples sent")
+
+
+def test_over_limit_drafts_pick_your_ten():
+    w = Workflow(mode="rules")
+    w.process_all()
+    body = next(r for r in w.reviews if r["request"] == "WEB-013")["message"]["body"]
+    assert "up to 10" in body and "You picked 14" in body
+
+
+def test_missing_quantity_becomes_a_question_and_approve_sends_it():
+    w = Workflow(mode="rules")
+    w.process_all()
+    base = next(r for r in w.inbox if r["id"] == "EML-017")
+    res = w.process({**base, "id": "EML-T3", "message": "Could you price the herringbone for me?"})
+    rv = next(r for r in w.reviews if r["request"] == "EML-T3")
+    assert rv["action"] == "send_question" and "How much Tidal Herringbone" in rv["message"]["body"]
+    w.approve(rv["id"])
+    assert rv["status"].startswith("Question sent") and res["outcome"] == "Question sent: waiting on customer"
+
+
+def test_quote_review_cannot_be_sent_as_a_question(wf):
+    rv = next(r for r in wf.reviews if r["action"] == "send_quote" and r["status"] == "Open")
+    wf.ask(rv["id"])
+    assert not rv["asked"] and rv["status"] == "Open"

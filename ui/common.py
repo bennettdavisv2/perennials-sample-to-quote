@@ -78,13 +78,35 @@ def open_reviews(w, rid: str | None = None) -> list[dict]:
     return [r for r in w.reviews if r["status"] == "Open" and (rid is None or r["request"] == rid)]
 
 
+def review_message(rv: dict):
+    """The customer email drafted for this review (a quote review's message is the quote email itself)."""
+    if not rv.get("message"):
+        return
+    label = "Quote email that Approve sends" if rv["action"] == "send_quote" else "Drafted message to the customer"
+    with st.expander(f"✉️ {label}: {rv['message']['subject']}" + (" · sent" if rv["asked"] else "")):
+        st.code(rv["message"]["body"], language=None, wrap_lines=True)
+
+
 def review_buttons(w, rv: dict, where: str):
-    a, b = st.columns(2)
-    if a.button("Approve", key=f"a-{where}-{rv['id']}", type="primary", width="stretch",
-                help=f"Approve: {rv['proposed']}"):
+    """Stacked so they fit a narrow column. Question-only reviews get Send question / Dismiss."""
+    key = f"{where}-{rv['id']}"
+    if rv["action"] in ("send_question", "none"):
+        if rv.get("message") and st.button("Send question", key=f"q-{key}", type="primary", width="stretch"):
+            w.approve(rv["id"])
+            st.rerun()
+        if st.button("Dismiss", key=f"r-{key}", width="stretch"):
+            w.reject(rv["id"])
+            st.rerun()
+        return
+    if st.button("Approve", key=f"a-{key}", type="primary", width="stretch", help=f"Approve: {rv['proposed']}"):
         w.approve(rv["id"])
         st.rerun()
-    if b.button("Reject", key=f"r-{where}-{rv['id']}", width="stretch"):
+    if rv.get("message") and rv["action"] != "send_quote":
+        if st.button("Question sent ✓" if rv["asked"] else "Send question", key=f"q-{key}", width="stretch",
+                     disabled=rv["asked"], help="Email the drafted message; the review stays open for their reply"):
+            w.ask(rv["id"])
+            st.rerun()
+    if st.button("Reject", key=f"r-{key}", width="stretch"):
         w.reject(rv["id"])
         st.rerun()
 

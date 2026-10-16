@@ -67,7 +67,7 @@ Automation handles the clear cases: spam, known trade accounts, clean quotes. Pe
 - **High-value quotes** (over $20k in the PoC) go to a manager. Policy changes, such as discount overrides, belong to sales ops.
 - **Do Not Sell** hits notify the account owner.
 
-Every customer email is drafted. Sending is automatic only for flag-free quotes and routine sample confirmations. Review items are mirrored as CRM Tasks so reps work where they already are.
+Every review item carries a drafted customer message (trade verification, a "pick your 10" list, one clarifying question, or the quote), so when a person is needed the next step is one click, not an email thread. Every customer email is drafted. Sending is automatic only for flag-free quotes and routine sample confirmations. Review items are mirrored as CRM Tasks so reps work where they already are.
 
 ## 5. With another week
 

@@ -75,7 +75,7 @@ pip install -r requirements.txt
 
 streamlit run app.py          # demo at http://localhost:8501
 python -m s2q.cli -v          # or headless: every workbook request, stage by stage, with email drafts
-pytest -q                     # 26 tests
+pytest -q                     # 31 tests
 ```
 
 **Optional: use Claude for email extraction.** Run `export ANTHROPIC_API_KEY=sk-...` before starting. Set `S2Q_MODEL` to override the model (default `claude-sonnet-5-5`). Without a key, the deterministic rules extractor is used and everything works the same. With a key, Claude reads each email and the rules run as a cross-check; if they disagree, the request goes to review. Website carts are structured, so they never go to the LLM.
@@ -110,8 +110,8 @@ One app, five pages, sharing one in-memory workflow. It starts **seeded**: the 2
 | WEB-007 | Spam is filtered and nothing is written to CRM | Keeps the CRM clean |
 | WEB-008 | Qualified, but Sunset Ikat is excluded from samples; the email offers the 22 yd remaining | Discontinued: no new samples |
 | WEB-002, WEB-009 | Non-trade nurture email, no free samples | Consumer / student |
-| WEB-012 | Goes to review | Says "designer" but uses a personal Gmail address |
-| WEB-013 | Goes to review | 14 SKUs in the cart, max 10 |
+| WEB-012 | Goes to review with a drafted email asking for a resale certificate or business website; the rep can approve, send it, or reject | Says "designer" but uses a personal Gmail address |
+| WEB-013 | Goes to review with a drafted "which 10 first?" email listing all 14 | 14 SKUs in the cart, max 10 |
 | EML-014 | Quote with 20% (trade + volume) on 80 yd stripe; held across **two dye lots** goes to review, needs a CFA from each lot | No single lot covers 80 yd |
 | EML-015 | 12 m becomes 13.25 yd; "green velvet" is quoted as Velvet Plush Moss (the only green), named in the email, no confirmation hold; out of stock, so not reserved and goes to review | Unit conversion + unique color match + zero stock |
 | EML-016 | $34.9k quote, 120 yd short on Canvas White, goes to manager review | Shortage + split lot + high value + need-by date |
@@ -173,5 +173,6 @@ Ambiguities in the brief and data, and the call I made on each:
 18. **Website requests are structured, like the real site.** The brief describes a free-text form, but on perennialsfabrics.com a sample is added to the cart from a product page (one colorway = one variant SKU, plus a Project Type), and "Request A Quote" sends Length + unit, Date Needed, CFA Waived / Requested and Project Name. So a web customer cannot name a fabric that doesn't exist, and AI extraction is only used on email. Each WEB row was converted once into its cart (`data/web_cart_submissions.json`); the original message is kept as the order note, and "everything" / "all your solids" / "every color of X" became the SKUs those imply. A cart SKU missing from the ERP (e.g. a stale cart) is flagged, never substituted.
 19. **Guest sample checkout is allowed.** The real site steers samples through a trade account (resale number), which would move qualification to registration. Allowing guest checkout keeps lead qualification (stage 2) meaningful for this exercise.
 20. **CFA (cutting for approval)** is the term for the customer approving a dye lot. A split across lots asks for a CFA from each lot; "CFA Requested" on the web quote form creates a CFA cutting order from the held lot.
-21. **Colors are resolved before anyone is asked.** If an email's description fits exactly one catalog SKU ("green velvet" = Moss), it is quoted and named in the email, with no hold. If several colorways fit ("the canvas"), the customer's own sample orders decide it. Only if that still leaves more than one does the system draft a single question listing the colorways and current stock.
-22. The sheet's *Type* column is used for sample vs. quote routing. In production the LLM would classify intent for the shared inbox.
+21. **Every review comes with a drafted customer message,** so a rep's next step is one click instead of a thread: a trade-verification request, a "which 10 first?" pick list, one clarifying question (color tie or missing quantity), or the quote itself. Sending a question keeps a qualification / sample review open until the customer replies.
+22. **Colors are resolved before anyone is asked.** If an email's description fits exactly one catalog SKU ("green velvet" = Moss), it is quoted and named in the email, with no hold. If several colorways fit ("the canvas"), the customer's own sample orders decide it. Only if that still leaves more than one does the system draft a single question listing the colorways and current stock.
+23. The sheet's *Type* column is used for sample vs. quote routing. In production the LLM would classify intent for the shared inbox.

@@ -58,3 +58,30 @@ def clarifying_question(name, questions):
     body += [f"  - {q}" for q in questions]
     body += ["", "Reply with the color and we'll send the quote right away.", "", "Best,", "Perennials Trade Team"]
     return {"subject": "Quick question on your Perennials quote", "body": "\n".join(body)}
+
+
+def trade_verification(name, items_desc, quote=False):
+    """Gray-zone lead (e.g. 'designer' on a personal address): one email asks for the proof a rep would look up."""
+    what = "a quote" if quote else "complimentary memo samples"
+    body = [f"Hi {_first(name)},", "", f"Thanks for reaching out to Perennials. To set you up for {what} at trade "
+            "terms, could you reply with your resale certificate or a link to your business website?"]
+    if items_desc:
+        body += ["", "As soon as we have it, we'll take care of:", ""] + [f"  - {d}" for d in items_desc]
+    body += ["", "Best,", "Perennials Trade Team"]
+    return {"subject": "One quick thing before we send your Perennials " + ("quote" if quote else "samples"),
+            "body": "\n".join(body)}
+
+
+def sample_pick(name, items_desc, max_samples):
+    """Too many (or 'everything'): ask once which ones to send first."""
+    body = [f"Hi {_first(name)},", "", f"Thanks for your sample request. We can send up to {max_samples} memo samples "
+            "per request so each one arrives quickly."]
+    if items_desc:
+        body += ["", f"You picked {len(items_desc)}:", ""] + [f"  - {d}" for d in items_desc]
+        body += ["", f"Reply with the {max_samples} you'd like first and we'll ship them right away; the rest can "
+                 "follow in a second shipment."]
+    else:
+        body += ["", "Tell us a little about the project (indoor or outdoor, colors, how the fabric will be used) and "
+                 f"we'll pick the {max_samples} that fit best."]
+    body += ["", "Best,", "Perennials Trade Team"]
+    return {"subject": "Which Perennials samples should we send first?", "body": "\n".join(body)}

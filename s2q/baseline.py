@@ -45,7 +45,8 @@ MANUAL: dict[tuple[str, str], Step | None] = {
     ("CRM", "Supersede quote"): Step("Sales rep", "Marks the old quote superseded before rebuilding it", 2, fields=1),
     ("CRM", "Update quote"): Step("Sales rep", "Updates the quote status", 1, fields=1),
     ("CRM", "Email quote"): Step("Sales rep", "Writes the quote email and attaches the PDF", 4, emails=1),
-    ("CRM", "Create review task"): None,  # today the person already is the process
+    ("CRM", "Create review task"): None,
+    ("CRM", "Email question"): Step("Sales rep", "Writes the customer a clarifying email from scratch", 4, emails=1, waits=1),  # today the person already is the process
     ("ERP", "Create customer"): Step("Order ops", "Rep emails order ops; ops creates the NetSuite customer from the "
                                                   "Salesforce account", 5, fields=8, emails=1, waits=1),
     ("ERP", "Create sample order"): Step("Order ops", "Rep emails order ops; ops retypes the sample request into a "

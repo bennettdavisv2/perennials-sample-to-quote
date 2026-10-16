@@ -6,8 +6,8 @@ import streamlit as st
 
 from s2q import baseline, site
 
-from .common import (acct_name, link, md, money, open_reviews, order_lines, reasons, review_buttons, system_header,
-                     table, wf)
+from .common import (acct_name, link, md, money, open_reviews, order_lines, reasons, review_buttons, review_message,
+                     system_header, table, wf)
 from .ops import quote_lines
 
 # Ready-made emails for the demo: a clean one, a tricky one, and replays of the workbook's emails.
@@ -109,6 +109,7 @@ def tasks(w):
                 st.markdown(f"**{rv['request']} · {req['name'] or req['email']}**: {rv['stage']}")
                 st.markdown("\n".join(f"- {md(r)}" for r in reasons(rv)))
                 st.caption(md(f"Proposed: {rv['proposed']} · {rv['task_id']} · owner: {rv['owner']}"))
+                review_message(rv)
             with c2:
                 review_buttons(w, rv, "crm")
 

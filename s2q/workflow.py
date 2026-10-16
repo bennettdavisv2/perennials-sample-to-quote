@@ -80,19 +80,24 @@ class Workflow:
     def _stage(self, res, n, status, summary):
         res["stages"][n] = {"stage": STAGES[n], "status": status, "summary": summary}
 
-    def _review(self, res, stage, reason, proposed, action, payload, owner="Sales rep"):
+    def _review(self, res, stage, reason, proposed, action, payload, owner="Sales rep", message=None):
         self._seq["REV"] += 1
         rid = f"REV-{self._seq['REV']:03d}"
         task = self.crm.create_task(f"[{rid}] {reason}", res["request"]["id"], owner)
         item = {"id": rid, "request": res["request"]["id"], "stage": stage, "reason": reason,
                 "proposed": proposed, "action": action, "payload": payload, "status": "Open",
-                "owner": owner, "task_id": task["id"]}
+                "owner": owner, "task_id": task["id"],
+                "message": message,  # drafted customer email, so the rep's next step is one click, not a thread
+                "asked": False}
         self.reviews.append(item)
         return item
 
     def _sampled_skus(self, erp_customer: str) -> set[str]:
         return {l["sku"] for so in self.erp.sales_orders if so["type"] == "Sample" and so["customer"] == erp_customer
                 for l in so["lines"]}
+
+    def _items_desc(self, ext: dict) -> list[str]:
+        return [self._sku_desc(s) for it in ext["items"] for s in it["skus"] if self.erp.get_item(s)]
 
     def _sku_desc(self, sku):
         it = self.erp.get_item(sku)
@@ -141,7 +146,8 @@ class Workflow:
             self._stage(res, 2, "review", "; ".join(q["reasons"]))
             self._stage(res, 3, "waiting", "Waiting on qualification review")
             self._review(res, "Lead qualification", "; ".join(q["reasons"]),
-                         "Qualify as trade and send requested samples", "qualify_and_sample", {"lead_id": lead["id"]})
+                         "Qualify as trade and send requested samples", "qualify_and_sample", {"lead_id": lead["id"]},
+                         message=emails.trade_verification(req["name"], self._items_desc(ext)))
             res["outcome"] = "Needs review: qualification"
             return
 
@@ -190,15 +196,18 @@ class Workflow:
 
         if ext["wildcard"] and not approved_cap:
             self._stage(res, 3, "review", f"Opportunity: {note}. Request asks for 'everything': rep to narrow down")
-            self._review(res, "Sample order", "Open-ended sample request", "Call customer to narrow list",
-                         "place_samples_capped", {"lead_id": lead["id"]})
+            self._review(res, "Sample order", "Open-ended sample request",
+                         f"Send the first {self.cfg.max_samples} and ask the customer to narrow the list",
+                         "place_samples_capped", {"lead_id": lead["id"]},
+                         message=emails.sample_pick(req["name"], [], self.cfg.max_samples))
             res["outcome"] = "Needs review: open-ended request"
             return
         if len(skus) > self.cfg.max_samples and not approved_cap:
             self._stage(res, 3, "review", f"Opportunity: {note}. {len(skus)} SKUs requested, max {self.cfg.max_samples}")
             self._review(res, "Sample order", f"{len(skus)} samples requested (max {self.cfg.max_samples})",
                          f"Send first {self.cfg.max_samples} as listed and offer the rest as a follow-up",
-                         "place_samples_capped", {"lead_id": lead["id"]})
+                         "place_samples_capped", {"lead_id": lead["id"]},
+                         message=emails.sample_pick(req["name"], [self._sku_desc(s) for s in skus], self.cfg.max_samples))
             res["outcome"] = "Needs review: over sample limit"
             return
         if len(skus) > self.cfg.max_samples:
@@ -238,8 +247,10 @@ class Workflow:
             if q["decision"] == "review":
                 self.crm.set_lead_status(lead, "Needs Review", "; ".join(q["reasons"]))
                 self._stage(res, 4, "review", "Unknown sender; qualify before quoting")
-                self._review(res, "Quote request", "; ".join(q["reasons"]), "Qualify sender, then quote",
-                             "none", {})
+                res["email"] = emails.trade_verification(req["name"], self._items_desc(ext), quote=True)
+                self._review(res, "Quote request", "; ".join(q["reasons"]),
+                             "Send the drafted question, then quote once they're verified", "send_question", {},
+                             message=res["email"])
                 res["outcome"] = "Needs review: unknown sender"
                 return
             if q["decision"] == "non_trade":
@@ -291,7 +302,9 @@ class Workflow:
             sku = skus[0]
             item = self.erp.get_item(sku)
             if it["quantity"] is None:
-                flags.append(f"No quantity for {self._sku_desc(sku)}")
+                flags.append(f"No quantity for {self._sku_desc(sku)}: drafted a question to the customer")
+                questions.append(f"How much {item['fabric']} in {item['color']} do you need? "
+                                 "Yards, feet or meters are all fine.")
                 continue
             yards = to_yards(it["quantity"], it["unit"])
             converted = it["unit"] in ("m", "ft")
@@ -355,7 +368,8 @@ class Workflow:
             if questions:
                 res["email"] = emails.clarifying_question(req["name"], questions)
             self._review(res, "Price quote", "; ".join(flags),
-                         "Send the drafted question to the customer" if questions else "Clarify with customer", "none", {})
+                         "Send the drafted question to the customer" if questions else "Clarify with customer",
+                         "send_question" if questions else "none", {}, message=res["email"])
             res["flags"] = flags
             res["outcome"] = "Needs review: nothing priceable"
             return
@@ -396,7 +410,8 @@ class Workflow:
         res["flags"] = flags
         if flags:
             self._review(res, "Price quote", f"{quote['id']}: " + " | ".join(flags),
-                         "Approve and send the drafted quote email", "send_quote", {"quote_id": quote["id"]})
+                         "Approve and send the drafted quote email", "send_quote", {"quote_id": quote["id"]},
+                         message=res["email"])
             res["outcome"] = f"Quote {quote['id']} drafted, needs review"
         else:
             self.log.record("CRM", "Email quote", f"{quote['id']} to {req['email']}",
@@ -433,7 +448,30 @@ class Workflow:
                             "Salesforce: send email from Quote (template)")
             self._stage(res, 5, "done", res["stages"][5]["summary"].replace("Pending rep review", f"Sent after review by {by}"))
             res["outcome"] = f"Quote {quote['id']} sent after review"
+        elif rv["action"] == "send_question":
+            self._email_question(rv, res, by)
         return rv
+
+    def ask(self, review_id: str, by: str = "rep"):
+        """Send the review's drafted question to the customer. For a qualification or sample-limit review the
+        review stays open (the reply decides it); for a question-only review this is the whole action."""
+        rv = next(r for r in self.reviews if r["id"] == review_id)
+        if rv["status"] != "Open" or not rv.get("message") or rv["asked"] or rv["action"] == "send_quote":
+            return rv  # a quote review's message is the quote itself: approving sends it
+        res = self.results[rv["request"]]
+        self.log.current_request, self.log.clock = rv["request"], res["request"]["received"]
+        self._email_question(rv, res, by)
+        return rv
+
+    def _email_question(self, rv, res, by):
+        self.log.record("CRM", "Email question", f"'{rv['message']['subject']}' to {res['request']['email']} ({rv['id']})",
+                        "Salesforce: emailSimple action from quotes@, logged on the Contact")
+        rv["asked"] = True
+        if rv["action"] in ("send_question", "none"):
+            rv["status"] = f"Question sent by {by}: waiting on customer"
+            res["outcome"] = "Question sent: waiting on customer"
+        else:
+            res["outcome"] += " (question sent to customer)"
 
     def reject(self, review_id: str, by: str = "rep"):
         rv = next(r for r in self.reviews if r["id"] == review_id)

@@ -6,7 +6,7 @@ import streamlit as st
 
 from s2q.workflow import STAGES
 
-from .common import md, money, open_reviews, reasons, review_buttons, table, wf
+from .common import md, money, open_reviews, reasons, review_buttons, review_message, table, wf
 
 SYSTEMS = {1: "Website → CRM", 2: "CRM", 3: "ERP + CRM", 4: "Website / email → CRM", 5: "ERP → CRM", 6: "ERP"}
 STAGE_STATUS = {"done": "✅ Done", "review": "🟡 Needs review", "blocked": "⛔ Blocked", "skipped": "➖ Skipped",
@@ -82,9 +82,13 @@ def render_detail(w, rid: str):
             st.warning(md(f))
         for rv in pending:
             with st.container(border=True):
-                st.markdown(md(f"**{rv['stage']} review** ({rv['id']}, owner: {rv['owner']})  \n"
-                               f"Proposed: {rv['proposed']}"))
-                review_buttons(w, rv, "detail")
+                c1, c2 = st.columns([3, 1])
+                with c1:
+                    st.markdown(md(f"**{rv['stage']} review** ({rv['id']}, owner: {rv['owner']})  \n"
+                                   f"Proposed: {rv['proposed']}"))
+                    review_message(rv)
+                with c2:
+                    review_buttons(w, rv, "detail")
 
     left, right = st.columns(2)
     with left:
@@ -196,6 +200,7 @@ def render():
                     st.markdown("\n".join(f"- {md(r)}" for r in reasons(rv)))
                     st.markdown(md(f"**Proposed:** {rv['proposed']}"))
                     st.caption(f"{rv['id']} · owner: {rv['owner']}")
+                    review_message(rv)
                 with c2:
                     review_buttons(w, rv, "queue")
         done = [r for r in w.reviews if r["status"] != "Open"]
