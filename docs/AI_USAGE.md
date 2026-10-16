@@ -1,34 +1,69 @@
 # AI usage notes
 
-## Inside the workflow
+## Tools
 
-- **Claude only reads email.** Website requests come from the real site's cart (exact variant SKU per product page, plus Project Type), so there is nothing to interpret; `CartIntake` maps them directly. Using an LLM there would add cost and a way to be wrong with no benefit.
-- **Claude (Anthropic API) for email extraction** (`s2q/extract.py`). Structured outputs (a JSON schema in `output_config.format`, `claude-opus-5-5` at low effort) return the segment, project, items (SKUs + quantity + unit), and intent flags (budgetary, revision, urgency, need-by). The catalog goes in the system prompt so the model maps informal names ("navy stripe", "green velvet") to real SKUs.
-- **Guardrails around it:**
-  - Output is validated against the catalog. Unknown SKUs are dropped and the line is flagged.
-  - A deterministic rules extractor always runs as a cross-check. Disagreement on items or quantities sends the request to review.
-  - If the API fails, the request falls back to rules and the note is logged.
-  - The model never prices, decides qualification, or writes customer-facing numbers.
-- **Why not more AI?** Qualification and pricing need to be explainable to sales ops and finance, and testable. An LLM is good at reading messy text and poor at being a policy engine. A natural next use is polishing email tone with numbers locked as placeholders, and classifying intent on a shared inbox.
+| Tool | Used for |
+|---|---|
+| **Claude Code** (Claude Opus 5.5) | Coding agent: wrote the code, tests, docs and diagrams under my direction |
+| **Claude in Chrome** (through Claude Code) | Clicking through the demo to check layout, and rendering the Mermaid diagrams to confirm they display |
+| **Claude API** (inside the product) | Reading free-text quote emails into structured requests (see below) |
 
-## Building it
+## How I worked with it
 
-Built with **Claude** as a coding agent. I gave it the case study and the workbook and chose the scope, stack (Python + Streamlit) and the LLM-with-fallback approach. It drafted the architecture, code, tests and docs, and I reviewed the outputs.
+There were two phases. First, Claude produced a rough draft from the brief and the workbook. Second, I reviewed that draft and directed every change. Each change followed the same loop: Claude proposed a plan, I approved or redirected it, Claude built it, the tests and the running app were checked, and then I committed. Seven commits in the repo history are from the review phase.
 
-**Where it helped:** reading all 21 requests and turning each into an edge case (dedupe on WEB-003, Do Not Sell on WEB-005, dye-lot splits, the revision in EML-021). It also handled boilerplate (adapters, UI, audit log with API mappings) and wrote tests against the expected outcome of every row.
+## Decisions I made
 
-**Where it needed correcting** (found by running the pipeline and reading every output, not by trusting the first pass):
+| Decision | Why |
+|---|---|
+| **Keep every change tied to the brief's goal**: manual handoffs and back-and-forth with customers | Mid-project I re-centred the work on that sentence of the brief. It's why the later work went into drafted customer messages and the old-vs-new comparison rather than more UI polish. |
+| **Model the website as structured, like the real site** | The brief says "free text form". I had Claude check perennialsfabrics.com: samples are added per colorway from product pages, so a customer can't name the wrong fabric. AI is now used only for email. |
+| **Allow guest sample checkout** | The real site uses a trade login. Keeping guest checkout keeps lead qualification meaningful for the exercise; it's stated as an assumption. |
+| **Two front doors, one pipeline** | Website and email are the two intake channels; everything after intake is shared. I folded the email demo into the CRM's quotes@ inbox instead of a separate mock mail app. |
+| **Demo and handoff scope** | A Streamlit multipage demo seeded with the workbook, labelled estimates for today's process, and a handoff that assumes a custom AWS service, Google Workspace, and checklist-level specs. |
 
-- **Revision bug.** The first version priced Dana's 90 yd revision *before* releasing the v1 hold, so it reported 83 yd short instead of 3. Fixed by releasing the prior hold first; there is a test for it.
-- **Quantity parsing on sample requests.** "140 guest rooms" and "60' yacht" were read as yardage. Quantities are now only parsed on quote requests.
-- **Multi-color requests.** "Coastal Linen in Sand and Charcoal" was first treated as one ambiguous item instead of two samples.
-- **Inferred colors, twice.** "Green velvet" first resolved silently to Moss; the fix then over-corrected by holding the quote for confirmation, which recreated the back-and-forth the project exists to remove. Final rule: a unique match is quoted and named in the email; several matches are settled from the customer's sample history; only a real tie becomes one drafted question.
-- **Wording.** Emails said "your samples are on the way" when none were eligible, and told a student consumer about "your client".
-- **Website intake modelled on the brief, not the product.** The first draft parsed web sample requests as free text with regex/LLM, because the brief says "free text form". Checking perennialsfabrics.com showed samples are added per colorway from product pages, and the quote form has Length + Yards/Feet/Meters, Date Needed and CFA. Web intake is now structured, AI is email-only, and feet and CFA are supported.
-- **Claude had never actually run.** The extractor used a forced tool call, which current Claude models reject (`tool_choice ... not supported for this model`). Every call failed and silently fell back to rules, so the demo looked fine. Found only by running with a real key and comparing outputs. Fixed by switching to structured outputs; failures now show in the sidebar. Measured after the fix: Claude and rules agree on every SKU, quantity and unit across 13 emails (8 workbook + 5 demo); Claude classified customers better in 3 cases ("price the herringbone for me" from a trade contact is not a consumer).
-- **First UI was hard to follow.** Emoji status strings, raw JSON panels and every stage shown even when n/a. Rebuilt as a request list plus a top-to-bottom story per request, with review actions next to the issue they resolve.
-- **UI.** Streamlit rendered "$34,912 > $20,000" as LaTeX math. Fixed by escaping `$`.
+## Where it helped
 
-- **Demo layer.** Claude also built the walkthrough app (mock storefront, CRM, ERP, old-vs-new pages) on top of the same workflow, and the README diagrams. The old-process numbers in `s2q/baseline.py` are estimates it proposed and I labelled as such.
+- Turned all 21 requests into concrete edge cases and tests: dedupe across two email addresses, a Do Not Sell account, dye-lot splits, a quote revision.
+- Wrote the adapters, the demo pages, and an integration log that maps every mock call to the real Salesforce or NetSuite API.
+- Surfaced real-system details I'd want an engineer to hear early:
+  - Salesforce quote lines need each item as a Product with a price-book entry.
+  - Lead conversion needs a small Apex endpoint.
+  - A pending NetSuite order doesn't hold inventory by default.
+  - One customer's requests must be processed in order.
 
-<!-- Add your own notes here: anything you changed, decisions you'd defend differently, time spent. -->
+## Where I had to correct it
+
+- **The first UI was confusing.** I told it so, in those words. It rebuilt the app around one request at a time, with review actions next to each issue.
+- **It modelled the brief, not the product.** It parsed web sample requests as free text because the brief says so. I pointed it at the real checkout, and it moved web intake to structured carts.
+- **It over-corrected on colors.** It held quotes to "confirm" a color when only one catalog color fit ("green velvet" can only be Moss), which recreated the back-and-forth the project is meant to remove. I asked how a color selection could even be wrong. The final rule: quote a unique match and name it in the email, settle ties from the customer's own sample history, and only then ask one question.
+- **It proposed a screen that added nothing.** A separate mock email app. I questioned it, and email went into the CRM inbox instead.
+- **The Claude path had never actually run.** When I asked what was missing and supplied an API key, every call failed: current models reject the forced tool call the code used. The app had been quietly falling back to rules, so nothing looked wrong. It was fixed with structured outputs, failures now show in the UI, and it was measured afterwards: Claude and the rules agree on every SKU, quantity and unit across 13 emails.
+
+It also caught some of its own mistakes while checking its work:
+- a find-and-replace that stripped table widths;
+- a diagram that rendered unreadably;
+- summary tiles that cut off quote totals.
+
+The first draft's own testing had already fixed:
+- a revision priced before the old hold was released;
+- "140 guest rooms" being read as yardage;
+- emails saying "your samples are on the way" when none were eligible.
+
+## AI inside the workflow
+
+- **Claude reads only email.** Website carts already carry exact SKUs, so an LLM there would add cost and a way to be wrong.
+- **How it reads:** structured outputs (a JSON schema in `output_config.format`, `claude-opus-5-5` at low effort) return the customer type, the items (SKU, quantity, unit) and intent (budgetary, revision, urgency, need-by). The catalog is in the system prompt, so informal names like "the navy stripe" map to real SKUs.
+- **Guardrails:**
+  - Output is checked against the catalog; unknown SKUs are dropped and flagged.
+  - A rules extractor always runs as a cross-check; disagreement sends the request to review.
+  - API failures fall back to rules and are shown, not hidden.
+  - Server-side refusal fallbacks are enabled.
+  - The model never sets prices, decides qualification, or writes customer-facing numbers.
+- **Why not more AI:** qualification and pricing must be explainable to sales ops and finance, and testable. Next candidates: classifying intent on the shared inbox, and polishing email tone with the numbers locked.
+
+## What I'd do differently
+
+- Look at the real product before modelling it. That would have saved a rework of the website intake.
+- Run the AI path with a real key on day one, and make any fallback loud from the start.
+- **Time spent:** _[fill in]_. The brief time-boxes this at 3–4 hours. The repo shows the review phase running from 13:53 to 16:19 on Oct 16, on top of the first draft. The core PoC came first; the demo and handoff layers were added after.
