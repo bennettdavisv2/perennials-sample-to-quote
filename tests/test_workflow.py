@@ -136,6 +136,7 @@ def test_llm_failure_falls_back_to_rules(monkeypatch):
     res = w.process(next(r for r in w.inbox if r["id"] == "EML-015"))
     assert res["extraction"]["method"] == "rules"
     assert any("failed" in n for n in res["extract_notes"])
+    assert w.extractor.failures == 1          # counted, so the UI can say Claude isn't actually running
 
 
 def test_llm_output_is_validated_against_catalog(monkeypatch):
@@ -145,17 +146,19 @@ def test_llm_output_is_validated_against_catalog(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
     w = Workflow(mode="auto")
 
+    import json
+
     class FakeMessages:
         def create(self, **kw):
-            assert kw["tool_choice"]["name"] == "record_request"
-            return NS(content=[NS(type="tool_use", input={
+            assert kw["output_config"]["format"]["type"] == "json_schema"   # structured outputs, not forced tools
+            return NS(stop_reason="end_turn", content=[NS(type="text", text=json.dumps({
                 "segment_hint": "trade", "trade_subtype": "Upholsterer", "signals": [], "project": "",
                 "items": [{"reference": "green velvet", "skus": ["PF-1004", "PF-9999"], "quantity": 12,
                            "unit": "m", "ambiguous": False, "inferred": False}],
                 "wildcard": False, "need_by": None, "urgent": False, "budgetary": False, "revision": False,
-                "wants_hold": False, "asks_price_list": False})])
+                "wants_hold": False, "asks_price_list": False}))])
 
-    w.extractor.llm.client = NS(messages=FakeMessages())
+    w.extractor.llm.client = NS(beta=NS(messages=FakeMessages()))
     res = w.process(next(r for r in w.inbox if r["id"] == "EML-015"))
     assert res["extraction"]["items"][0]["skus"] == ["PF-1004"]
     assert res["quote_id"] and any("confirm" in f for f in res["flags"])

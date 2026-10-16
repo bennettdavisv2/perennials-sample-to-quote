@@ -3,7 +3,7 @@
 ## Inside the workflow
 
 - **Claude only reads email.** Website requests come from the real site's cart (exact variant SKU per product page, plus Project Type), so there is nothing to interpret; `CartIntake` maps them directly. Using an LLM there would add cost and a way to be wrong with no benefit.
-- **Claude (Anthropic API) for email extraction** (`s2q/extract.py`). A forced tool call (`record_request`) with a JSON schema returns the segment, project, items (SKUs + quantity + unit), and intent flags (budgetary, revision, urgency, need-by). The catalog goes in the system prompt so the model maps informal names ("navy stripe", "green velvet") to real SKUs.
+- **Claude (Anthropic API) for email extraction** (`s2q/extract.py`). Structured outputs (a JSON schema in `output_config.format`, `claude-opus-5-5` at low effort) return the segment, project, items (SKUs + quantity + unit), and intent flags (budgetary, revision, urgency, need-by). The catalog goes in the system prompt so the model maps informal names ("navy stripe", "green velvet") to real SKUs.
 - **Guardrails around it:**
   - Output is validated against the catalog. Unknown SKUs are dropped and the line is flagged.
   - A deterministic rules extractor always runs as a cross-check. Disagreement on items or quantities sends the request to review.
@@ -25,6 +25,7 @@ Built with **Claude** as a coding agent. I gave it the case study and the workbo
 - **Inferred colors, twice.** "Green velvet" first resolved silently to Moss; the fix then over-corrected by holding the quote for confirmation, which recreated the back-and-forth the project exists to remove. Final rule: a unique match is quoted and named in the email; several matches are settled from the customer's sample history; only a real tie becomes one drafted question.
 - **Wording.** Emails said "your samples are on the way" when none were eligible, and told a student consumer about "your client".
 - **Website intake modelled on the brief, not the product.** The first draft parsed web sample requests as free text with regex/LLM, because the brief says "free text form". Checking perennialsfabrics.com showed samples are added per colorway from product pages, and the quote form has Length + Yards/Feet/Meters, Date Needed and CFA. Web intake is now structured, AI is email-only, and feet and CFA are supported.
+- **Claude had never actually run.** The extractor used a forced tool call, which current Claude models reject (`tool_choice ... not supported for this model`). Every call failed and silently fell back to rules, so the demo looked fine. Found only by running with a real key and comparing outputs. Fixed by switching to structured outputs; failures now show in the sidebar. Measured after the fix: Claude and rules agree on every SKU, quantity and unit across 13 emails (8 workbook + 5 demo); Claude classified customers better in 3 cases ("price the herringbone for me" from a trade contact is not a consumer).
 - **First UI was hard to follow.** Emoji status strings, raw JSON panels and every stage shown even when n/a. Rebuilt as a request list plus a top-to-bottom story per request, with review actions next to the issue they resolve.
 - **UI.** Streamlit rendered "$34,912 > $20,000" as LaTeX math. Fixed by escaping `$`.
 

@@ -53,7 +53,7 @@ flowchart TB
 | 2 | **No duplicate customers.** A second email address at the same firm is recognised as the same person. | SOQL on email, then domain + name; Salesforce Duplicate Rules as a backstop |
 | 3 | **Qualification in seconds.** Known trade accounts and clear cases are handled; reps see only the gray zone (e.g. "designer" on a Gmail address). | Policy table in the orchestrator; `Lead.Status` + `Qualification_Reason__c`; review Task assigned by Flow |
 | 4 | **Sample orders reach NetSuite on their own,** linked to the Salesforce opportunity. | NetSuite REST `salesOrder` (Sample form, $0 price level); customer `externalId` = Salesforce Account Id |
-| 5 | **Quote emails are read for the rep.** "80 yds of the navy stripe" becomes SKU + quantity. Colors are settled from the catalog and the customer's own samples before anyone is asked. | Gmail push / Microsoft Graph subscription on quotes@; Claude tool-use (email only), validated against the NetSuite item list; rules cross-check |
+| 5 | **Quote emails are read for the rep.** "80 yds of the navy stripe" becomes SKU + quantity. Colors are settled from the catalog and the customer's own samples before anyone is asked. | Gmail push / Microsoft Graph subscription on quotes@; Claude with structured outputs (email only), validated against the NetSuite item list; rules cross-check |
 | 6 | **No "let me check stock and price" replies.** Price and dye-lot availability come back in the same step. | NetSuite RESTlet (SuiteScript) for trade / volume / cut-fee rules; inventory by lot |
 | 7 | **Quote attached to the opportunity, customer email drafted.** Numbers come only from NetSuite, never from the AI. | Salesforce `Quote` + `QuoteLineItem`, PDF via `ContentVersion`; email template sent from Salesforce |
 | 8 | **Fabric held from one dye lot,** released automatically after 14 days. A split across lots asks for a CFA (cutting for approval). | NetSuite sales order with lot-level inventory detail; scheduled SuiteScript releases expired holds; CFA sales order form |
@@ -78,7 +78,7 @@ python -m s2q.cli -v          # or headless: every workbook request, stage by st
 pytest -q                     # 31 tests
 ```
 
-**Optional: use Claude for email extraction.** Run `export ANTHROPIC_API_KEY=sk-...` before starting. Set `S2Q_MODEL` to override the model (default `claude-sonnet-5-5`). Without a key, the deterministic rules extractor is used and everything works the same. With a key, Claude reads each email and the rules run as a cross-check; if they disagree, the request goes to review. Website carts are structured, so they never go to the LLM.
+**Optional: use Claude for email extraction.** Run `export ANTHROPIC_API_KEY=sk-...` before starting. If the key is in a `.env` one folder up, load it with `set -a; source ../.env; set +a`. Set `S2Q_MODEL` to override the model (default `claude-opus-5-5`, low effort). Without a key, the deterministic rules extractor is used and everything works the same. With a key, Claude reads each email and the rules run as a cross-check; if they disagree, the request goes to review. Website carts are structured, so they never go to the LLM.
 
 ## The demo
 
@@ -133,7 +133,7 @@ ui/ops.py               Ops console (request detail, review queue, integration l
 ui/common.py            Shared session state (seeded workflow) and helpers
 s2q/workflow.py         Orchestrator: the six stages, review queue, approve/reject
 s2q/site.py             What the website checkout and the quotes@ inbox send into the workflow
-s2q/extract.py          Website cart -> request (CartIntake); email free text -> request (Claude tool-use, or rules)
+s2q/extract.py          Website cart -> request (CartIntake); email free text -> request (Claude structured outputs, or rules)
 s2q/identity.py         Match sender to existing lead/contact/account (dedupe)
 s2q/qualify.py          Qualification policy table
 s2q/pricing.py          Pricing math (pure functions)

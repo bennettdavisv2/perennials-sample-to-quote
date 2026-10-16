@@ -46,7 +46,10 @@ with st.sidebar:
     if mode != st.session_state.get("mode", "auto"):
         st.session_state.mode = mode
         common.reset()
-    st.caption(f"Email reader: **{common.wf().extractor.status}**")
+    ex = common.wf().extractor
+    st.caption(f"Email reader: **{ex.status}**")
+    if ex.failures:
+        st.warning(f"{ex.failures} Claude call(s) failed and fell back to rules. See the Ops console's raw data.")
     if st.button("↺ Reset demo", width="stretch"):
         common.reset()
         st.rerun()

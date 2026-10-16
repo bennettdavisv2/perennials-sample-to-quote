@@ -165,7 +165,7 @@ The order's `customer_note` is the order note. Billing name, company and email g
 
 - **Secrets** in Secrets Manager: Salesforce JWT key, NetSuite certificate, WooCommerce webhook secret, Anthropic key, Gmail service account.
 - **Gmail access:** a service account with domain-wide delegation, scope `gmail.modify` (read, plus label messages as processed).
-- **AI guardrails, already in the PoC:** forced tool call with a JSON schema; output checked against the item list; rules cross-check, with any disagreement sent to review; the model never sets price or qualification. Log the model id and prompt version per request.
+- **AI guardrails, already in the PoC:** structured outputs (`output_config.format` JSON schema; forced `tool_choice` is rejected by current models); server-side refusal fallbacks; output checked against the item list; rules cross-check, with any disagreement sent to review; the model never sets price or qualification. Log the model id and prompt version per request.
 - **Observability:** dead-letter queue alarm, review-queue age alarm (for example, a review open longer than 4 business hours), daily hold-reconciliation report.
 
 ---

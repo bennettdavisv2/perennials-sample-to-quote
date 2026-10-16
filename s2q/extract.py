@@ -4,7 +4,7 @@ Website requests arrive structured (CartIntake): the customer picked the exact c
 on a product page, so only emails need reading. For email, two interchangeable
 extractors return the same shape:
   * RuleExtractor - deterministic, offline, always available.
-  * LLMExtractor  - Claude with a forced tool call (JSON schema). Used when
+  * LLMExtractor  - Claude with structured outputs (JSON schema in output_config.format). Used when
                     ANTHROPIC_API_KEY is set. Its output is validated against the
                     catalog. If the call fails, we fall back to rules.
 
@@ -197,36 +197,36 @@ class RuleExtractor:
         }
 
 
-EXTRACTION_TOOL = {
-    "name": "record_request",
-    "description": "Record the structured interpretation of an inbound fabric sample or quote request.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "segment_hint": {"type": "string", "enum": ["trade", "consumer", "student", "spam", "competitor", "unclear"],
-                             "description": "Who is asking. trade = designer/architect/upholsterer/hospitality/specifier buying for a client project."},
-            "trade_subtype": {"type": "string", "description": "e.g. Interior Designer, Architect, Upholsterer, Hospitality, Marine, Other"},
-            "signals": {"type": "array", "items": {"type": "string"}, "description": "Short phrases from the message that justify segment_hint."},
-            "project": {"type": "string", "description": "One-line project description, or empty."},
-            "items": {"type": "array", "items": {"type": "object", "properties": {
-                "reference": {"type": "string", "description": "How the customer referred to it, verbatim"},
-                "skus": {"type": "array", "items": {"type": "string"}, "description": "Catalog SKUs this could mean. More than one only if ambiguous or 'every color'."},
-                "quantity": {"type": ["number", "null"]},
-                "unit": {"type": ["string", "null"], "enum": ["yd", "m", "ft", None]},
-                "ambiguous": {"type": "boolean"},
-                "inferred": {"type": "boolean", "description": "True if the SKU was inferred from a loose description (e.g. 'green velvet') rather than named."}},
-                "required": ["reference", "skus", "quantity", "unit", "ambiguous", "inferred"]}},
-            "wildcard": {"type": "boolean", "description": "Asked for everything / all fabrics without naming them."},
-            "need_by": {"type": ["string", "null"]},
-            "urgent": {"type": "boolean"},
-            "budgetary": {"type": "boolean", "description": "Customer says rough/budgetary pricing is fine."},
-            "revision": {"type": "boolean", "description": "Changes a quantity or item from an earlier request."},
-            "wants_hold": {"type": "boolean"},
-            "asks_price_list": {"type": "boolean"},
-        },
-        "required": ["segment_hint", "trade_subtype", "signals", "project", "items", "wildcard", "need_by",
-                     "urgent", "budgetary", "revision", "wants_hold", "asks_price_list"],
+_NULLABLE_STR = {"type": ["string", "null"]}
+
+# Structured output schema (output_config.format): the API guarantees the reply is JSON matching this.
+EXTRACTION_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "segment_hint": {"type": "string", "enum": ["trade", "consumer", "student", "spam", "competitor", "unclear"],
+                         "description": "Who is asking. trade = designer/architect/upholsterer/hospitality/specifier buying for a client project."},
+        "trade_subtype": {"type": "string", "description": "e.g. Interior Designer, Architect, Upholsterer, Hospitality, Marine, Other"},
+        "signals": {"type": "array", "items": {"type": "string"}, "description": "Short phrases from the message that justify segment_hint."},
+        "project": {"type": "string", "description": "One-line project description, or empty."},
+        "items": {"type": "array", "items": {"type": "object", "additionalProperties": False, "properties": {
+            "reference": {"type": "string", "description": "How the customer referred to it, verbatim"},
+            "skus": {"type": "array", "items": {"type": "string"}, "description": "Catalog SKUs this could mean. More than one only if ambiguous or 'every color'."},
+            "quantity": {"type": ["number", "null"]},
+            "unit": {"anyOf": [{"type": "string", "enum": ["yd", "m", "ft"]}, {"type": "null"}]},
+            "ambiguous": {"type": "boolean"},
+            "inferred": {"type": "boolean", "description": "True if the SKU was inferred from a loose description (e.g. 'green velvet') rather than named."}},
+            "required": ["reference", "skus", "quantity", "unit", "ambiguous", "inferred"]}},
+        "wildcard": {"type": "boolean", "description": "Asked for everything / all fabrics without naming them."},
+        "need_by": _NULLABLE_STR,
+        "urgent": {"type": "boolean"},
+        "budgetary": {"type": "boolean", "description": "Customer says rough/budgetary pricing is fine."},
+        "revision": {"type": "boolean", "description": "Changes a quantity or item from an earlier request."},
+        "wants_hold": {"type": "boolean"},
+        "asks_price_list": {"type": "boolean"},
     },
+    "required": ["segment_hint", "trade_subtype", "signals", "project", "items", "wildcard", "need_by",
+                 "urgent", "budgetary", "revision", "wants_hold", "asks_price_list"],
 }
 
 
@@ -236,7 +236,7 @@ class LLMExtractor:
     def __init__(self, catalog: list[dict], model: str | None = None):
         import anthropic  # imported lazily so rules mode needs no SDK
         self.client = anthropic.Anthropic()
-        self.model = model or os.environ.get("S2Q_MODEL", "claude-sonnet-5-5")
+        self.model = model or os.environ.get("S2Q_MODEL", "claude-opus-5-5")
         self.catalog = catalog
         self.valid = {c["sku"] for c in catalog}
         cat = "\n".join(f"{c['sku']} | {c['fabric']} | {c['color']} | {c['status']}" for c in catalog)
@@ -253,12 +253,16 @@ class LLMExtractor:
     def extract(self, req: dict) -> dict:
         msg = (f"Request type: {req['type']}\nChannel: {req['channel']}\nName: {req['name']}\n"
                f"Company: {req['company']}\nEmail: {req['email']}\nMessage: {req['message']}")
-        resp = self.client.messages.create(
-            model=self.model, max_tokens=1500, system=self.system,
-            tools=[EXTRACTION_TOOL], tool_choice={"type": "tool", "name": "record_request"},
+        resp = self.client.beta.messages.create(
+            model=self.model, max_tokens=16000, system=self.system,
+            # A simple extraction: low effort keeps it fast. Structured outputs guarantee schema-valid JSON.
+            output_config={"effort": "low", "format": {"type": "json_schema", "schema": EXTRACTION_SCHEMA}},
+            # If a safety classifier declines, the API retries on Anthropic's recommended fallback model.
+            betas=["server-side-fallback-2026-07-01"], fallbacks="default",
             messages=[{"role": "user", "content": msg}])
-        block = next(b for b in resp.content if b.type == "tool_use")
-        out = dict(block.input)
+        if resp.stop_reason == "refusal":
+            raise RuntimeError(f"model declined ({getattr(resp.stop_details, 'category', None)})")
+        out = json.loads(next(b.text for b in resp.content if b.type == "text"))
         # Validate: drop SKUs that are not in the catalog rather than trusting the model.
         for it in out.get("items", []):
             bad = [s for s in it.get("skus", []) if s not in self.valid]
@@ -349,6 +353,8 @@ class Extractor:
     def __init__(self, catalog: list[dict], mode: str = "auto"):
         self.cart = CartIntake(catalog)
         self.rules = RuleExtractor(catalog)
+        self._prefetched: dict[str, dict | Exception] = {}
+        self.failures = 0  # LLM calls that fell back to rules (shown in the UI so a broken key/model isn't silent)
         self.llm = None
         self.status = "rules only"
         if mode in ("auto", "llm") and os.environ.get("ANTHROPIC_API_KEY"):
@@ -360,6 +366,21 @@ class Extractor:
         elif mode in ("auto", "llm"):
             self.status = "rules only (no ANTHROPIC_API_KEY)"
 
+    def prefetch(self, reqs: list[dict], workers: int = 8):
+        """Read many emails with the LLM in parallel (each call is independent); results are used by extract()."""
+        todo = [r for r in reqs if self.llm and not r.get("cart") and r["id"] not in self._prefetched]
+        if not todo:
+            return
+        from concurrent.futures import ThreadPoolExecutor
+
+        def one(r):
+            try:
+                return r["id"], self.llm.extract(r)
+            except Exception as e:  # surfaced (and logged as a fallback note) when the request is processed
+                return r["id"], e
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            self._prefetched.update(pool.map(one, todo))
+
     def extract(self, req: dict) -> tuple[dict, list[str]]:
         notes = []
         if req.get("cart"):
@@ -370,9 +391,12 @@ class Extractor:
         if not self.llm:
             return rules, notes
         try:
-            ext = self.llm.extract(req)
+            ext = self._prefetched.pop(req["id"], None) or self.llm.extract(req)
+            if isinstance(ext, Exception):
+                raise ext
         except Exception as e:
-            notes.append(f"LLM extraction failed ({type(e).__name__}); used rules")
+            self.failures += 1
+            notes.append(f"LLM extraction failed ({type(e).__name__}: {str(e)[:120]}); used rules")
             return rules, notes
         if items_signature(ext) != items_signature(rules):
             notes.append("LLM and rules disagree on items/quantities: rep should confirm. "

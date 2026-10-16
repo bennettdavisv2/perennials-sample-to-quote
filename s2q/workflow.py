@@ -51,6 +51,7 @@ class Workflow:
         return self.process(p[0]) if p else None
 
     def process_all(self):
+        self.extractor.prefetch(self.pending())  # LLM reads emails in parallel; workflow still runs in order
         while self.pending():
             self.process_next()
 
@@ -66,7 +67,7 @@ class Workflow:
                         "WooCommerce form webhook" if src == "Website" else "Shared inbox -> email-to-case / Gmail API")
         ext, notes = self.extractor.extract(req)
         self.log.record("AI", "Extract request", f"{ext['method']}: segment={ext['segment_hint']}, "
-                        f"items={[i['skus'] for i in ext['items']]}", "Claude API (tool-use JSON) or rules fallback")
+                        f"items={[i['skus'] for i in ext['items']]}", "Claude API (structured outputs) or rules fallback")
         res = {"request": req, "extraction": ext, "extract_notes": notes, "stages": {}, "flags": [],
                "email": None, "outcome": "", "identity": None, "qualification": None}
         self.results[req["id"]] = res
