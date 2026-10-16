@@ -161,6 +161,7 @@ class Workflow:
 
         # Which SKUs can be sampled?
         skus, excluded, notes = [], [], []
+        res["flags"] += [f"Cart line {s} is not an item in the ERP: left out" for s in ext.get("invalid_skus", [])]
         for it in ext["items"]:
             if it["ambiguous"]:
                 res["flags"].append(f"'{it['reference']}' is ambiguous: sending all colors {it['skus']}")
@@ -261,6 +262,7 @@ class Workflow:
         is_trade = str(account["type"]).startswith("Trade")
         flags = list(res["flags"])
         flags += [n for n in res["extract_notes"] if "disagree" in n]
+        flags += [f"Cart line {s} is not an item in the ERP: not quoted" for s in ext.get("invalid_skus", [])]
         lines, line_desc, cust_notes, alloc_plan = [], [], [], []
         for it in ext["items"]:
             if it["ambiguous"] or len(it["skus"]) != 1:
@@ -272,9 +274,10 @@ class Workflow:
                 flags.append(f"No quantity for {self._sku_desc(sku)}")
                 continue
             yards = to_yards(it["quantity"], it["unit"])
-            conv = f" ({it['quantity']:g} m converted)" if it["unit"] == "m" else ""
-            if it["unit"] == "m":
-                cust_notes.append(f"{it['quantity']:g} m quoted as {yards:g} yd (rounded up to the nearest 1/4 yd).")
+            converted = it["unit"] in ("m", "ft")
+            conv = f" ({it['quantity']:g} {it['unit']} converted)" if converted else ""
+            if converted:
+                cust_notes.append(f"{it['quantity']:g} {it['unit']} quoted as {yards:g} yd (rounded up to the nearest 1/4 yd).")
             if it.get("inferred"):
                 flags.append(f"'{it['reference']}' interpreted as {self._sku_desc(sku)}: confirm with customer")
                 cust_notes.append(f"We read '{it['reference']}' as {item['fabric']} in {item['color']}; let us know if you meant another color.")
@@ -302,9 +305,9 @@ class Workflow:
                                       f"we're confirming lead time for the remaining {alloc['short']:g} yd.")
                 if alloc["split"]:
                     lots = ", ".join(f"{a['lot']} ({a['yards']:g} yd)" for a in alloc["lines"])
-                    flags.append(f"{sku}: no single dye lot covers {yards:g} yd; split across {lots}. Customer must accept mixed lots")
+                    flags.append(f"{sku}: no single dye lot covers {yards:g} yd; split across {lots}. Needs a CFA (cutting for approval) from each lot")
                     cust_notes.append(f"{item['fabric']} {item['color']} would ship from more than one dye lot; "
-                                      "we'll send cuttings from each lot to approve.")
+                                      "we'll send a CFA (cutting for approval) from each lot.")
             p = self.erp.price(sku, quote_yards, is_trade)
             lines.append({"sku": sku, "description": f"{item['fabric']} - {item['color']}", **p,
                           "requested_yards": yards, "status": item["status"]})
@@ -347,9 +350,15 @@ class Workflow:
         elif alloc_plan:
             so = self.erp.create_reservation(cust, quote["id"], alloc_plan, req["received"])
             quote["reservation_id"] = so["id"]
+            cfa = ""
+            if ext.get("cfa_requested"):
+                cut = self.erp.create_cfa_order(cust, quote["id"], alloc_plan, req["email"], req["received"])
+                quote["cfa_order_id"] = cut["id"]
+                cfa = f"; CFA cuttings {cut['id']} from the held lots"
+                cust_notes.append("A CFA (cutting for approval) from the lot we're holding is on its way.")
             self._stage(res, 6, "done", f"{so['id']} holds " + "; ".join(
                 f"{l['sku']} " + "+".join(f"{a['yards']:g}yd@{a['lot']}" for a in l["allocation"]) for l in alloc_plan)
-                + f" until {so['hold_expires']:%Y-%m-%d}")
+                + f" until {so['hold_expires']:%Y-%m-%d}{cfa}")
         else:
             self._stage(res, 6, "skipped", "Nothing in stock to reserve")
 

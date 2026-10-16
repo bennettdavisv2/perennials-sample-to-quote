@@ -14,18 +14,20 @@ pip install -r requirements.txt
 
 streamlit run app.py          # UI at http://localhost:8501
 python -m s2q.cli -v          # or headless: every request, stage by stage, with email drafts
-pytest -q                     # 14 tests
+pytest -q                     # 19 tests
 ```
 
-**Optional: use Claude for extraction.** Run `export ANTHROPIC_API_KEY=sk-...` before starting. Set `S2Q_MODEL` to override the model (default `claude-sonnet-5-5`). Without a key, the app uses the deterministic rules extractor and works exactly the same. With a key, Claude does the extraction and the rules extractor runs as a cross-check. If they disagree, the request is flagged for review.
+**Website requests are structured; only emails are read by AI.** On perennialsfabrics.com a sample is added from a product page ("Add Sample To Cart" on one colorway, with a Project Type), so the website hands us exact SKUs. `data/web_cart_submissions.json` shows what each WEB row would look like as a cart; the original message is kept as the order note. Email quote requests are free text, so that is where extraction runs.
+
+**Optional: use Claude for email extraction.** Run `export ANTHROPIC_API_KEY=sk-...` before starting. Set `S2Q_MODEL` to override the model (default `claude-sonnet-5-5`). Without a key, the app uses the deterministic rules extractor and works exactly the same. With a key, Claude reads each email and the rules extractor runs as a cross-check. If they disagree, the request is flagged for review.
 
 ## What to click
 
-1. Click **▶ Next request** to step through the 21 requests in time order, or **⏭ Process all**.
-2. **Inbox & pipeline**: one row per request with a ✅🟡⛔ status per stage. Pick a request to see the message, identity match, qualification reasons, AI extraction, quote lines, flags, and the drafted customer email.
-3. **Review queue**: approve or reject. Approving runs the deferred action: it places the samples, or sends the quote.
-4. **CRM / ERP**: the mock systems' records. Watch "reserved" change on the dye lots.
-5. **Audit log**: every call, with the real API it maps to.
+1. Click **▶ Process next** to step through the 21 requests in time order, or **⏭ Process all**.
+2. **Requests**: click a row. The right side reads top to bottom: what arrived (website cart or email), the result, what happened at each stage, anything that needs attention (with Approve / Reject), who the sender is, the quote, and the drafted customer email.
+3. **Review queue**: everything waiting on a person. Approving runs the deferred action: it places the samples, or sends the quote.
+4. **CRM & ERP records**: the mock systems' records. Watch "Reserved" change on the dye lots.
+5. **Integration log**: every call, with the real Salesforce / NetSuite API it maps to. Filter by request.
 
 ## Interesting rows
 
@@ -37,8 +39,8 @@ pytest -q                     # 14 tests
 | WEB-008 | Qualified, but Sunset Ikat is excluded from samples; the email offers the 22 yd remaining | Discontinued: no new samples |
 | WEB-002, WEB-009 | Non-trade nurture email, no free samples | Consumer / student |
 | WEB-012 | Goes to review | Says "designer" but uses a personal Gmail address |
-| WEB-013 | Goes to review | 14 SKUs requested, max 10 |
-| EML-014 | Quote with 20% (trade + volume) on 80 yd stripe; held across **two dye lots** goes to review | No single lot covers 80 yd |
+| WEB-013 | Goes to review | 14 SKUs in the cart, max 10 |
+| EML-014 | Quote with 20% (trade + volume) on 80 yd stripe; held across **two dye lots** goes to review, needs a CFA from each lot | No single lot covers 80 yd |
 | EML-015 | 12 m becomes 13.25 yd; "green velvet" is read as Velvet Plush Moss and flagged to confirm; out of stock, so not reserved | Unit conversion + inferred color + zero stock |
 | EML-016 | $34.9k quote, 120 yd short on Canvas White, goes to manager review | Shortage + split lot + high value + need-by date |
 | EML-017 | Clean quote with the $25 cut fee is **sent automatically** and held | No flags |
@@ -52,14 +54,15 @@ pytest -q                     # 14 tests
 ```
 app.py                  Streamlit UI
 s2q/workflow.py         Orchestrator: the six stages, review queue, approve/reject
-s2q/extract.py          Free text -> structured request (Claude tool-use, or rules fallback)
+s2q/extract.py          Website cart -> request (CartIntake); email free text -> request (Claude tool-use, or rules)
 s2q/identity.py         Match sender to existing lead/contact/account (dedupe)
 s2q/qualify.py          Qualification policy table
 s2q/pricing.py          Pricing math (pure functions)
 s2q/emails.py           Customer email templates (numbers come only from pricing)
 s2q/adapters/crm.py     Mock Salesforce
 s2q/adapters/erp.py     Mock NetSuite (items, dye-lot inventory, sample orders, reservations)
-s2q/data.py             Loads the workbook; pricing rules are parsed from the Pricing Rules tab
+s2q/data.py             Loads the workbook (pricing rules parsed from the Pricing Rules tab) and the web carts
+data/web_cart_submissions.json  Each WEB row as the real site would submit it (exact SKUs + Project Type + note)
 docs/DESIGN.md          Design note (architecture, sources of truth, mapping, human-in-the-loop, next week)
 docs/AI_USAGE.md        How AI was used to build this, and inside it
 ```
@@ -70,7 +73,7 @@ Ambiguities in the brief and data, and the call I made on each:
 
 1. **Volume tiers are trade-only and additive.** "On top of trade discount" means 15% + 5% = 20% off list, not compounded (19.25%). Non-trade pays list price at any quantity.
 2. **Cut fee** is $25 per line under 5 yd, for everyone.
-3. **Meters are converted to yards and rounded up to the nearest 1/4 yd** (12 m becomes 13.25 yd).
+3. **Meters and feet are converted to yards and rounded up to the nearest 1/4 yd** (12 m becomes 13.25 yd; 10 ft becomes 3.5 yd). The site's quote form offers Yards / Feet / Meters.
 4. **Samples are memo swatches stocked separately from bolt yardage.** Out-of-stock or backordered fabrics can still be sampled (the email notes the yardage status). Discontinued fabrics cannot.
 5. **Free samples are for qualified trade only.** Consumers and students get a friendly nurture email with a paid-sample/retail path, not a rejection.
 6. **A designer on a personal email address goes to human review**, not auto-qualify or auto-reject.
@@ -85,4 +88,7 @@ Ambiguities in the brief and data, and the call I made on each:
 15. **Shortage:** quote the full quantity, hold what's available, flag the gap. **Discontinued:** quote at most the remaining stock.
 16. **Any flag, or a total over $20k, sends a quote to review.** Clean quotes are sent automatically.
 17. Simulated "now" is each request's received time (quote valid 30 days, hold 14 days). Shipping and tax are excluded.
-18. The sheet's *Type* column is used for sample vs. quote routing. In production the LLM would classify intent for the shared inbox.
+18. **Website requests are structured, like the real site.** The brief describes a free-text form, but on perennialsfabrics.com a sample is added to the cart from a product page (one colorway = one variant SKU, plus a Project Type), and "Request A Quote" sends Length + unit, Date Needed, CFA Waived / Requested and Project Name. So a web customer cannot name a fabric that doesn't exist, and AI extraction is only used on email. Each WEB row was converted once into its cart (`data/web_cart_submissions.json`); the original message is kept as the order note, and "everything" / "all your solids" / "every color of X" became the SKUs those imply. A cart SKU missing from the ERP (e.g. a stale cart) is flagged, never substituted.
+19. **Guest sample checkout is allowed.** The real site steers samples through a trade account (resale number), which would move qualification to registration. Allowing guest checkout keeps lead qualification (stage 2) meaningful for this exercise.
+20. **CFA (cutting for approval)** is the term for the customer approving a dye lot. A split across lots asks for a CFA from each lot; "CFA Requested" on the web quote form creates a CFA cutting order from the held lot.
+21. The sheet's *Type* column is used for sample vs. quote routing. In production the LLM would classify intent for the shared inbox.

@@ -32,6 +32,11 @@ def test_meters_round_up_to_quarter_yard():
     assert to_yards(3, "yd") == 3
 
 
+def test_feet_convert_to_yards():
+    assert to_yards(30, "ft") == 10
+    assert to_yards(10, "ft") == 3.5   # 3.33 yd rounds up to the next 1/4
+
+
 # ---------- end to end ----------
 def test_outcomes(wf):
     out = {k: v["outcome"] for k, v in wf.results.items()}
@@ -98,7 +103,7 @@ def test_llm_failure_falls_back_to_rules(monkeypatch):
             raise RuntimeError("api down")
 
     w.extractor.llm = Boom()
-    res = w.process_next()
+    res = w.process(next(r for r in w.inbox if r["id"] == "EML-015"))
     assert res["extraction"]["method"] == "rules"
     assert any("failed" in n for n in res["extract_notes"])
 
@@ -124,3 +129,51 @@ def test_llm_output_is_validated_against_catalog(monkeypatch):
     res = w.process(next(r for r in w.inbox if r["id"] == "EML-015"))
     assert res["extraction"]["items"][0]["skus"] == ["PF-1004"]
     assert res["quote_id"] and any("confirm" in f for f in res["flags"])
+
+
+# ---------- website intake is structured ----------
+def test_web_cart_items_are_exact_skus(wf):
+    ext = wf.results["WEB-010"]["extraction"]
+    assert ext["method"] == "web cart"
+    assert [i["skus"] for i in ext["items"]] == [["PF-1015"], ["PF-1010"]]
+    assert not any(i["ambiguous"] or i["inferred"] for i in ext["items"])
+
+
+def test_web_requests_never_call_the_llm():
+    w = Workflow(mode="rules")
+
+    class MustNotBeCalled:
+        model = "x"
+
+        def extract(self, req):
+            raise AssertionError(f"LLM called for website request {req['id']}")
+
+    w.extractor.llm = MustNotBeCalled()
+    for r in w.inbox:
+        if r["id"].startswith("WEB"):
+            w.process(r)
+
+
+def test_unknown_cart_sku_is_flagged_not_substituted():
+    w = Workflow(mode="rules")
+    req = dict(next(r for r in w.inbox if r["id"] == "WEB-001"))
+    req["cart"] = {**req["cart"], "skus": ["PF-1001", "PF-9999"]}
+    res = w.process(req)
+    assert [i["skus"] for i in res["extraction"]["items"]] == [["PF-1001"]]
+    assert any("PF-9999" in f for f in res["flags"])
+
+
+def test_web_quote_form_with_cfa_and_feet():
+    """The site's Request A Quote form: Length in Feet, Date Needed, CFA Requested."""
+    w = Workflow(mode="rules")
+    base = next(r for r in w.inbox if r["id"] == "EML-017")  # Mara Lowe, existing trade contact
+    req = {**base, "id": "WEB-Q01", "channel": "Website form", "message": "",
+           "cart": {"project_name": "Malibu beach house", "project_type": "residential", "note": "",
+                    "quote_lines": [{"sku": "PF-1006", "length": 30, "unit": "Feet",
+                                     "date_needed": "2026-11-20", "cfa": "requested"}]}}
+    res = w.process(req)
+    q = next(q for q in w.crm.quotes if q["id"] == res["quote_id"])
+    assert q["lines"][0]["yards"] == 10
+    cfa = next(s for s in w.erp.sales_orders if s["id"] == q["cfa_order_id"])
+    assert cfa["type"] == "CFA" and cfa["lines"][0]["sku"] == "PF-1006"
+    assert res["extraction"]["need_by"] == "2026-11-20"

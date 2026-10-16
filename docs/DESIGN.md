@@ -3,11 +3,12 @@
 ## 1. Architecture
 
 ```
- Website (WooCommerce form) ──webhook──┐
+ Website (WooCommerce cart) ──webhook──┐
  Shared inbox (quotes@)  ──poll/push───┤
                                        ▼
                        ┌──────── Orchestrator (integration service) ────────┐
-                       │ 1 Extract     AI: free text -> JSON, validated      │
+                       │ 1 Extract     web: cart is structured (exact SKUs) │
+                       │               email: AI free text -> JSON, validated│
                        │ 2 Identify    dedupe against CRM                    │
                        │ 3 Decide      qualification + quote policy (rules)  │
                        │ 4 Act         CRM / ERP adapter calls               │
@@ -18,7 +19,7 @@
                     (Salesforce / HubSpot)               (NetSuite)
 ```
 
-The design principle is **AI at the edges, deterministic in the middle.** The model does the part that was manual and fuzzy: reading "80 yds of the navy stripe and maybe 20 of the boucle" and mapping it to SKUs. Everything with money or inventory consequences (qualification, price, dye-lot allocation, holds) is plain code that can be tested and audited. The LLM output is validated against the catalog (unknown SKUs are dropped and the line is flagged), and the rules extractor runs alongside as a cross-check. Customer emails are templates filled from ERP pricing, so no generated number reaches a customer.
+The design principle is **AI at the edges, deterministic in the middle.** The website needs no AI for the fabric: on perennialsfabrics.com the customer adds an exact colorway from a product page, so the cart already carries the SKU. The model does the part that is still manual and fuzzy, the email channel: reading "80 yds of the navy stripe and maybe 20 of the boucle" and mapping it to SKUs. Everything with money or inventory consequences (qualification, price, dye-lot allocation, holds) is plain code that can be tested and audited. The LLM output is validated against the catalog (unknown SKUs are dropped and the line is flagged), and the rules extractor runs alongside as a cross-check. Customer emails are templates filled from ERP pricing, so no generated number reaches a customer.
 
 The orchestrator talks to systems only through adapters (`MockCRM`, `MockERP`). Moving to production means writing `SalesforceCRM` / `NetSuiteERP` with the same methods. The audit log already records which real API call each mock call stands for.
 
@@ -37,7 +38,7 @@ The orchestrator talks to systems only through adapters (`MockCRM`, `MockERP`). 
 
 | PoC step | Salesforce | NetSuite |
 |---|---|---|
-| Website form | WooCommerce webhook → orchestrator → `POST /sobjects/Lead` (LeadSource = Web Sample) | – |
+| Website sample / quote cart | WooCommerce order webhook (line items = variant SKUs; Project Type, Length, Date Needed, CFA as line-item meta; order note) → orchestrator → `POST /sobjects/Lead` (LeadSource = Web Sample) | Variant SKU = NetSuite item (externalId) |
 | Dedupe | SOQL on Contact/Lead email + email domain; Duplicate Rules as a backstop | – |
 | Qualification | Lead Status + `Qualification_Reason__c`; review = Task to a queue | – |
 | Convert + Opportunity | Lead convert API (to existing or new Account/Contact), Opportunity + Contact Role | Customer record (`externalId` = Account Id) |
@@ -45,6 +46,7 @@ The orchestrator talks to systems only through adapters (`MockCRM`, `MockERP`). 
 | Quote email intake | Email-to-Case or Gmail/Graph API → orchestrator | – |
 | Pricing | Quote + QuoteLineItem; Quote PDF via ContentVersion | Price levels + quantity pricing, or a RESTlet that applies trade/volume/cut-fee rules |
 | Reservation | Hold SO number + expiry on Quote | Lot-numbered items; sales order with lot-level inventory detail (see caveat) |
+| CFA (cutting for approval) | CFA order number on Quote | $0 sales order, CFA form, lot-specific cutting from the held lot |
 | Revision | New Quote version; old one Superseded | Close old hold lines, create new |
 | Human review | Task / Approval Process on Quote (discount, value thresholds) | – |
 
@@ -58,8 +60,8 @@ Automation handles the clear cases: spam, known trade accounts, clean quotes. Pe
 
 - **Qualification gray zone:** trade language on a personal email address, or no signal. A rep verifies the resale certificate or website.
 - **Open-ended or oversized sample asks** ("everything you have", over 10 SKUs). A rep narrows the list. This is also a sales conversation worth having.
-- **Anything the AI inferred** ("green velvet" read as Moss), or where Claude and the rules disagree.
-- **Inventory problems:** split dye lots (the customer must approve cuttings), shortages, backorder vs. "ASAP". These need purchasing/production input on lead time.
+- **Anything the AI inferred from an email** ("green velvet" read as Moss), or where Claude and the rules disagree. Website carts don't need this: the SKU is exact.
+- **Inventory problems:** split dye lots (the customer approves a CFA from each lot), shortages, backorder vs. "ASAP". These need purchasing/production input on lead time.
 - **High-value quotes** (over $20k in the PoC) go to a manager. Policy changes, such as discount overrides, belong to sales ops.
 - **Do Not Sell** hits notify the account owner.
 

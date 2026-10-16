@@ -1,0 +1,145 @@
+{
+  "_about": "What each WEB-xxx request would look like as a real perennialsfabrics.com submission: 'Add Sample To Cart' on a product page adds an exact colorway (variant SKU) with a Project Type (residential | hospitality, optional), and checkout carries Project Name and an order note. The note is the original free-text message from the workbook. Where the message asked for 'everything' / 'all your solids' / 'every color of X', the cart lists the SKUs that implies.",
+  "WEB-001": {
+    "skus": [
+      "PF-1001",
+      "PF-1002"
+    ],
+    "project_type": "hospitality",
+    "project_name": "Boutique hotel lobby refresh, Austin",
+    "note": "Designer working on a boutique hotel lobby refresh in Austin. Requesting Harbor Stripe Navy and Woven Boucle Oat."
+  },
+  "WEB-002": {
+    "skus": [
+      "PF-1001",
+      "PF-1002",
+      "PF-1003",
+      "PF-1004",
+      "PF-1005",
+      "PF-1006",
+      "PF-1007",
+      "PF-1008",
+      "PF-1009",
+      "PF-1010",
+      "PF-1011",
+      "PF-1012",
+      "PF-1013",
+      "PF-1014",
+      "PF-1015",
+      "PF-1016",
+      "PF-1017"
+    ],
+    "project_type": "residential",
+    "project_name": "Patio cushions",
+    "note": "Hi! Want to redo my patio cushions. Can I get some free samples of everything you have?"
+  },
+  "WEB-003": {
+    "skus": [
+      "PF-1003"
+    ],
+    "project_type": "hospitality",
+    "project_name": "",
+    "note": "Also need the Basketweave in Fog, thanks."
+  },
+  "WEB-004": {
+    "skus": [
+      "PF-1006",
+      "PF-1007"
+    ],
+    "project_type": "residential",
+    "project_name": "Beach house living room, Malibu",
+    "note": "Beach house living room in Malibu. Please send Coastal Linen in Sand and Charcoal."
+  },
+  "WEB-005": {
+    "skus": [
+      "PF-1010",
+      "PF-1011"
+    ],
+    "project_type": null,
+    "project_name": "",
+    "note": "Please send 1 yd cuts of all your solids plus your current trade price list."
+  },
+  "WEB-006": {
+    "skus": [
+      "PF-1010",
+      "PF-1015",
+      "PF-1016"
+    ],
+    "project_type": "hospitality",
+    "project_name": "140 guest rooms + pool deck, Scottsdale",
+    "note": "Refreshing 140 guest rooms and the pool deck at our Scottsdale property. Need Canvas Solid White, Mesh Sling Graphite, and Faux Leather Cognac."
+  },
+  "WEB-007": {
+    "skus": [
+      "PF-1001"
+    ],
+    "project_type": null,
+    "project_name": "",
+    "note": "BEST SEO SERVICES!!! Cheap backlinks, page 1 guaranteed. Click here today."
+  },
+  "WEB-008": {
+    "skus": [
+      "PF-1013"
+    ],
+    "project_type": "residential",
+    "project_name": "Two dining chairs",
+    "note": "Customer wants the Sunset Ikat Coral for two dining chairs. Can you send a swatch?"
+  },
+  "WEB-009": {
+    "skus": [
+      "PF-1012"
+    ],
+    "project_type": "residential",
+    "project_name": "Studio project",
+    "note": "Interior design student working on a studio project. Could I get a sample of the Ribbed Chenille Ivory?"
+  },
+  "WEB-010": {
+    "skus": [
+      "PF-1015",
+      "PF-1010"
+    ],
+    "project_type": null,
+    "project_name": "60' yacht refit",
+    "note": "Sling fabric options for a 60' yacht refit. Graphite mesh and white canvas please."
+  },
+  "WEB-011": {
+    "skus": [
+      "PF-1009",
+      "PF-1008",
+      "PF-1017"
+    ],
+    "project_type": "hospitality",
+    "project_name": "Restaurant patio, Denver",
+    "note": "Specifying for a restaurant patio in Denver. Send Garden Trellis Celadon, Tidal Herringbone Slate, and Plaid Check Forest."
+  },
+  "WEB-012": {
+    "skus": [
+      "PF-1005",
+      "PF-1004"
+    ],
+    "project_type": null,
+    "project_name": "",
+    "note": "I'm a designer just starting my own firm. Would love Velvet Plush in Garnet and Moss."
+  },
+  "WEB-013": {
+    "skus": [
+      "PF-1004",
+      "PF-1005",
+      "PF-1006",
+      "PF-1007",
+      "PF-1010",
+      "PF-1011",
+      "PF-1012",
+      "PF-1008",
+      "PF-1009",
+      "PF-1015",
+      "PF-1016",
+      "PF-1017",
+      "PF-1014",
+      "PF-1003"
+    ],
+    "project_type": null,
+    "project_name": "Sample library",
+    "note": "Building our library. Please send every color of Velvet Plush, Coastal Linen, Canvas Solid, Ribbed Chenille, Tidal Herringbone, Garden Trellis, Mesh Sling, Faux Leather, Plaid Check, Rope Texture, and Basketweave."
+  }
+}

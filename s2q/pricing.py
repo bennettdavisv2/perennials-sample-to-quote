@@ -17,6 +17,8 @@ def to_yards(qty: float, unit: str | None) -> float:
     """Convert to yards, rounding up to the nearest 1/4 yard (fabric is cut in quarters)."""
     if unit in ("m", "meter", "meters", "metre", "metres"):
         qty = qty * M_TO_YD
+    elif unit in ("ft", "foot", "feet"):  # the website quote form offers Yards / Feet / Meters
+        qty = qty / 3
     return math.ceil(qty * 4 - 1e-9) / 4
 
 

@@ -2,7 +2,8 @@
 
 ## Inside the workflow
 
-- **Claude (Anthropic API) for request extraction** (`s2q/extract.py`). A forced tool call (`record_request`) with a JSON schema returns the segment, project, items (SKUs + quantity + unit), and intent flags (budgetary, revision, urgency, need-by). The catalog goes in the system prompt so the model maps informal names ("navy stripe", "green velvet") to real SKUs.
+- **Claude only reads email.** Website requests come from the real site's cart (exact variant SKU per product page, plus Project Type), so there is nothing to interpret; `CartIntake` maps them directly. Using an LLM there would add cost and a way to be wrong with no benefit.
+- **Claude (Anthropic API) for email extraction** (`s2q/extract.py`). A forced tool call (`record_request`) with a JSON schema returns the segment, project, items (SKUs + quantity + unit), and intent flags (budgetary, revision, urgency, need-by). The catalog goes in the system prompt so the model maps informal names ("navy stripe", "green velvet") to real SKUs.
 - **Guardrails around it:**
   - Output is validated against the catalog. Unknown SKUs are dropped and the line is flagged.
   - A deterministic rules extractor always runs as a cross-check. Disagreement on items or quantities sends the request to review.
@@ -23,6 +24,8 @@ Built with **Claude** as a coding agent. I gave it the case study and the workbo
 - **Multi-color requests.** "Coastal Linen in Sand and Charcoal" was first treated as one ambiguous item instead of two samples.
 - **Inferred colors.** "Green velvet" initially resolved silently to Moss. It is now flagged as *inferred*, and the customer email asks them to confirm.
 - **Wording.** Emails said "your samples are on the way" when none were eligible, and told a student consumer about "your client".
+- **Website intake modelled on the brief, not the product.** The first draft parsed web sample requests as free text with regex/LLM, because the brief says "free text form". Checking perennialsfabrics.com showed samples are added per colorway from product pages, and the quote form has Length + Yards/Feet/Meters, Date Needed and CFA. Web intake is now structured, AI is email-only, and feet and CFA are supported.
+- **First UI was hard to follow.** Emoji status strings, raw JSON panels and every stage shown even when n/a. Rebuilt as a request list plus a top-to-bottom story per request, with review actions next to the issue they resolve.
 - **UI.** Streamlit rendered "$34,912 > $20,000" as LaTeX math. Fixed by escaping `$`.
 
 <!-- Add your own notes here: anything you changed, decisions you'd defend differently, time spent. -->

@@ -1,6 +1,8 @@
-"""Turn a free-text request into structured data.
+"""Turn an inbound request into structured data.
 
-Two interchangeable extractors return the same shape:
+Website requests arrive structured (CartIntake): the customer picked the exact colorway
+on a product page, so only emails need reading. For email, two interchangeable
+extractors return the same shape:
   * RuleExtractor - deterministic, offline, always available.
   * LLMExtractor  - Claude with a forced tool call (JSON schema). Used when
                     ANTHROPIC_API_KEY is set. Its output is validated against the
@@ -46,7 +48,7 @@ TRADE_KW = ["designer", "interior design", "architect", "specifying", "specifier
             "studio", "library", "banquette", "property", "contract", "project"]
 CONSUMER_KW = ["my patio", "my own chair", "for my own", "my house", "my home", "my couch", "my sofa", "for me"]
 SPAM_KW = ["seo", "backlink", "page 1 guaranteed", "click here", "crypto", "casino"]
-NUM_UNIT = r"(\d+(?:\.\d+)?)\s*(yards|yard|yds|yd|meters|metres|meter|metre|m)?\b"
+NUM_UNIT = r"(\d+(?:\.\d+)?)\s*(yards|yard|yds|yd|meters|metres|meter|metre|m|feet|foot|ft)?\b"
 
 
 def _project(text: str) -> str:
@@ -66,7 +68,32 @@ def is_free_email(email: str) -> bool:
 def _unit(u):
     if not u:
         return None
-    return "m" if u.startswith("m") else "yd"
+    return "m" if u.startswith("m") else "ft" if u.startswith("f") else "yd"
+
+
+def classify(text: str, company: str | None) -> tuple[str, str, list[str]]:
+    """Who is asking, from free text + company: (segment_hint, trade_subtype, signals)."""
+    hay = f"{text.lower()} {(company or '').lower()}"
+    trade = [k for k in TRADE_KW if k in hay]
+    consumer = [k for k in CONSUMER_KW if k in hay]
+    spam = [k for k in SPAM_KW if re.search(r"\b" + re.escape(k), hay)]
+    caps = sum(1 for w in text.split() if len(w) > 3 and w.isupper()) >= 3
+    if spam or caps:
+        seg = "spam"
+    elif "student" in hay:
+        seg = "student"
+    elif trade and not consumer:
+        seg = "trade"
+    elif consumer and not trade:
+        seg = "consumer"
+    else:
+        seg = "unclear"
+    subtype = ("Interior Designer" if "design" in hay else "Architect" if "architect" in hay
+               else "Upholsterer" if "upholster" in hay else "Hospitality" if "hotel" in hay else "Other")
+    signals = [f"trade: {k}" for k in trade] + [f"consumer: {k}" for k in consumer] + [f"spam: {k}" for k in spam]
+    if "student" in hay:
+        signals.append("student")
+    return seg, subtype, signals
 
 
 class RuleExtractor:
@@ -126,7 +153,7 @@ class RuleExtractor:
                     qty, unit = float(q[-1].group(1)), _unit(q[-1].group(2))
                 else:
                     q2 = (re.search(r"\b(?:at|to)\s+(\d+(?:\.\d+)?)", post)
-                          or re.search(r"(\d+(?:\.\d+)?)\s*(yards|yard|yds|yd|meters|metres|m)\b", post))
+                          or re.search(r"(\d+(?:\.\d+)?)\s*(yards|yard|yds|yd|meters|metres|m|feet|foot|ft)\b", post))
                     if q2:
                         qty, unit = float(q2.group(1)), _unit(q2.group(2) if q2.lastindex and q2.lastindex > 1 else None)
                 if qty is not None and unit is None:
@@ -149,26 +176,7 @@ class RuleExtractor:
             seen.add(k)
             dedup.append(it)
 
-        hay = f"{low} {(req.get('company') or '').lower()}"
-        trade = [k for k in TRADE_KW if k in hay]
-        consumer = [k for k in CONSUMER_KW if k in hay]
-        spam = [k for k in SPAM_KW if re.search(r"\b" + re.escape(k), hay)]
-        caps = sum(1 for w in text.split() if len(w) > 3 and w.isupper()) >= 3
-        if spam or caps:
-            seg = "spam"
-        elif "student" in hay:
-            seg = "student"
-        elif trade and not consumer:
-            seg = "trade"
-        elif consumer and not trade:
-            seg = "consumer"
-        else:
-            seg = "unclear"
-        subtype = ("Interior Designer" if "design" in hay else "Architect" if "architect" in hay
-                   else "Upholsterer" if "upholster" in hay else "Hospitality" if "hotel" in hay else "Other")
-        signals = [f"trade: {k}" for k in trade] + [f"consumer: {k}" for k in consumer] + [f"spam: {k}" for k in spam]
-        if "student" in hay:
-            signals.append("student")
+        seg, subtype, signals = classify(text, req.get("company"))
 
         need_by = None
         m = re.search(r"\b(?:by|before)\s+((?:early|mid|late)[- ]?)?(january|february|march|april|may|june|july|august|september|october|november|december)\b", low)
@@ -204,7 +212,7 @@ EXTRACTION_TOOL = {
                 "reference": {"type": "string", "description": "How the customer referred to it, verbatim"},
                 "skus": {"type": "array", "items": {"type": "string"}, "description": "Catalog SKUs this could mean. More than one only if ambiguous or 'every color'."},
                 "quantity": {"type": ["number", "null"]},
-                "unit": {"type": ["string", "null"], "enum": ["yd", "m", None]},
+                "unit": {"type": ["string", "null"], "enum": ["yd", "m", "ft", None]},
                 "ambiguous": {"type": "boolean"},
                 "inferred": {"type": "boolean", "description": "True if the SKU was inferred from a loose description (e.g. 'green velvet') rather than named."}},
                 "required": ["reference", "skus", "quantity", "unit", "ambiguous", "inferred"]}},
@@ -239,7 +247,7 @@ class LLMExtractor:
             "Rules: informal names count ('navy stripe' = Harbor Stripe Navy; 'green velvet' = Velvet Plush Moss). "
             "If a fabric has several colors and none is given, list all its SKUs and set ambiguous=true. "
             "'Every color of X' means one item per SKU of X. Do not compute prices. Do not invent SKUs. "
-            "Quantities: keep the customer's unit (yd or m); a bare number next to a fabric in a yardage request is yards. "
+            "Quantities: keep the customer's unit (yd, m or ft); a bare number next to a fabric in a yardage request is yards. "
             "Sample requests have quantity null.")
 
     def extract(self, req: dict) -> dict:
@@ -264,14 +272,82 @@ class LLMExtractor:
         return out
 
 
+UNITS = {"yards": "yd", "yard": "yd", "yd": "yd", "feet": "ft", "foot": "ft", "ft": "ft",
+         "meters": "m", "metres": "m", "meter": "m", "m": "m"}
+
+
+class CartIntake:
+    """Website submissions are structured, so there is nothing to guess about the fabric.
+
+    On perennialsfabrics.com a sample is added from a product page ("Add Sample To Cart"
+    on one colorway = one variant SKU, with a Project Type), and "Request A Quote" sends
+    Length + unit (Yards / Feet / Meters), Date Needed, CFA Waived / Requested and Project
+    Name. Only the order note is free text, and it is read for who is asking, not for SKUs.
+
+    Cart shape (data/web_cart_submissions.json):
+      skus [str], project_type (residential|hospitality|None), project_name, note,
+      quote_lines [{sku, length, unit, date_needed, cfa}]  (quote form only)
+    """
+    name = "web cart"
+
+    def __init__(self, catalog: list[dict]):
+        self.by_sku = {c["sku"]: c for c in catalog}
+
+    def extract(self, req: dict) -> dict:
+        cart = req["cart"]
+        note = cart.get("note") or ""
+        seg, subtype, signals = classify(note, req.get("company"))
+        ptype = cart.get("project_type")
+        if ptype:
+            signals.append(f"project type: {ptype}")
+            if ptype == "hospitality":
+                seg = "trade" if seg == "unclear" else seg
+                subtype = "Hospitality" if subtype == "Other" else subtype
+
+        lines = cart.get("quote_lines") or [{"sku": s} for s in cart.get("skus", [])]
+        items, invalid, seen = [], [], set()
+        for ln in lines:
+            sku = ln["sku"]
+            if sku in seen:
+                continue
+            seen.add(sku)
+            it = self.by_sku.get(sku)
+            if not it:  # e.g. a stale cart line for a retired product: never guess a substitute
+                invalid.append(sku)
+                continue
+            items.append({"reference": f"{it['fabric']} {it['color']}", "skus": [sku],
+                          "quantity": ln.get("length"), "unit": UNITS.get(str(ln.get("unit") or "yards").lower(), "yd")
+                          if ln.get("length") is not None else None,
+                          "ambiguous": False, "inferred": False})
+        dates = sorted(ln["date_needed"] for ln in lines if ln.get("date_needed"))
+        return {
+            "method": "web cart",
+            "segment_hint": seg, "trade_subtype": subtype, "signals": signals,
+            "project": cart.get("project_name") or "",
+            "project_type": ptype,
+            "items": items,
+            "invalid_skus": invalid,
+            "wildcard": False,
+            "need_by": dates[0] if dates else None,
+            "urgent": False,
+            "budgetary": False,
+            "revision": False,
+            "wants_hold": False,
+            "asks_price_list": "price list" in note.lower(),
+            "cfa_requested": any(str(ln.get("cfa", "")).lower() == "requested" for ln in lines),
+        }
+
+
 def items_signature(ext: dict) -> set:
     return {(tuple(sorted(i["skus"])), i.get("quantity"), i.get("unit")) for i in ext["items"]}
 
 
 class Extractor:
-    """Picks LLM when available, always runs rules as a cross-check."""
+    """Website carts are already structured. Emails go to the LLM when available, with rules
+    as a cross-check (rules alone otherwise)."""
 
     def __init__(self, catalog: list[dict], mode: str = "auto"):
+        self.cart = CartIntake(catalog)
         self.rules = RuleExtractor(catalog)
         self.llm = None
         self.status = "rules only"
@@ -286,6 +362,10 @@ class Extractor:
 
     def extract(self, req: dict) -> tuple[dict, list[str]]:
         notes = []
+        if req.get("cart"):
+            ext = self.cart.extract(req)
+            notes += [f"Cart line {s} is not an item in the ERP: left out, not substituted" for s in ext["invalid_skus"]]
+            return ext, notes
         rules = self.rules.extract(req)
         if not self.llm:
             return rules, notes

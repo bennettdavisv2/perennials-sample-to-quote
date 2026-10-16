@@ -5,9 +5,14 @@ The workbook stands in for three systems:
   * Pricing Rules         -> ERP price rules (parsed into PricingConfig)
   * Existing CRM Records  -> CRM accounts + contacts
   * Inbound Requests      -> website form submissions + inbound emails
+
+Website requests are enriched from data/web_cart_submissions.json: on the real site a
+sample is added to the cart from a product page (exact colorway SKU + Project Type), so
+the website hands us structured lines, with the free text only as an order note.
 """
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -16,6 +21,7 @@ from pathlib import Path
 import openpyxl
 
 DEFAULT_DATA = Path(__file__).resolve().parent.parent / "data" / "perennials_sample_data.xlsx"
+CARTS_FILE = "web_cart_submissions.json"  # looked up next to the workbook
 
 
 @dataclass
@@ -100,5 +106,11 @@ def load_workbook(path: str | Path = DEFAULT_DATA) -> dict:
             "message": r["Message"] or "",
         })
     requests.sort(key=lambda x: x["received"])
+
+    carts_path = Path(path).with_name(CARTS_FILE)
+    carts = json.loads(carts_path.read_text()) if carts_path.exists() else {}
+    for r in requests:
+        if r["id"] in carts:
+            r["cart"] = carts[r["id"]]
 
     return {"lots": lots, "pricing": cfg, "accounts": accounts, "contacts": contacts, "requests": requests}

@@ -110,6 +110,20 @@ class MockERP:
         self.log.record("ERP", "Release reservation", f"{so_id}: {reason}",
                         "NetSuite REST: PATCH /record/v1/salesOrder/{id} (close lines)")
 
+    def create_cfa_order(self, customer_id: str, quote_id: str, alloc_plan: list[dict], ship_to: str,
+                         now: datetime) -> dict:
+        """CFA (cutting for approval): a small cutting from each lot being held, so the customer
+        approves the actual dye lot before ordering."""
+        so = {"id": self._id("CFA"), "type": "CFA", "customer": customer_id, "quote_id": quote_id,
+              "status": "Pending Fulfillment", "created": now, "ship_to": ship_to,
+              "lines": [{"sku": l["sku"], "lot": a["lot"], "qty": 1, "uom": "cutting"}
+                        for l in alloc_plan for a in l["allocation"]]}
+        self.sales_orders.append(so)
+        self.log.record("ERP", "Create CFA order", f"{so['id']} for {quote_id}: " +
+                        ", ".join(f"{ln['sku']} lot {ln['lot']}" for ln in so["lines"]),
+                        "NetSuite REST: POST /record/v1/salesOrder (custom form = CFA, $0, lot-specific inventory detail)")
+        return so
+
     def create_sample_order(self, customer_id: str, skus: list[str], ship_to: str, now: datetime) -> dict:
         so = {"id": self._id("SMP"), "type": "Sample", "customer": customer_id, "status": "Pending Fulfillment",
               "created": now, "lines": [{"sku": s, "qty": 1, "uom": "memo swatch"} for s in skus], "ship_to": ship_to}
