@@ -2,7 +2,7 @@
 
 ## 1. Architecture
 
-The README opens with the old-flow vs new-flow diagrams and a table of each change with where it would run. This section is the technical view.
+The README opens with the old-flow vs new-flow diagrams and a table of each change with where it would run. This section is the technical view. The system-by-system build list is in `ENGINEERING_HANDOFF.md`.
 
 ```
  Website (WooCommerce cart) ──webhook──┐

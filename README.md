@@ -61,6 +61,8 @@ flowchart TB
 | 10 | **People only where judgment matters:** big quotes, split lots, shortages, backorders, gray-zone leads. | Salesforce Task / Approval Process (e.g. over $20k); approve runs the held action |
 | 11 | **Every step is traceable.** | Audit log per request, inbound message / order id as the idempotency key; retries + dead-letter queue |
 
+**Handoff:** [`docs/ENGINEERING_HANDOFF.md`](docs/ENGINEERING_HANDOFF.md) lists the exact changes for each system (WooCommerce, Salesforce, NetSuite, the integration service, email), with owners, sizes, rollout phases and open questions.
+
 In the demo's seeded data, Dana Ruiz's journey (2 sample requests, a quote, a revision) takes about **35 manual steps, 84 retyped fields and 8 internal emails** today, versus **2 rep approvals** with the workflow. The manual-side numbers are illustrative estimates (`s2q/baseline.py`), not measurements.
 
 ## Run it (under 5 minutes)
@@ -142,6 +144,7 @@ s2q/adapters/erp.py     Mock NetSuite (items, dye-lot inventory, sample orders, 
 s2q/data.py             Loads the workbook (pricing rules parsed from the Pricing Rules tab) and the web carts
 s2q/cli.py              Headless run over the workbook requests
 data/web_cart_submissions.json  Each WEB row as the real site would submit it (exact SKUs + Project Type + note)
+docs/ENGINEERING_HANDOFF.md  Exact changes per system for engineering (fields, scripts, endpoints, rollout)
 docs/DESIGN.md          Design note (architecture, sources of truth, mapping, human-in-the-loop, next week)
 docs/AI_USAGE.md        How AI was used to build this, and inside it
 ```
