@@ -41,7 +41,7 @@ pytest -q                     # 19 tests
 | WEB-012 | Goes to review | Says "designer" but uses a personal Gmail address |
 | WEB-013 | Goes to review | 14 SKUs in the cart, max 10 |
 | EML-014 | Quote with 20% (trade + volume) on 80 yd stripe; held across **two dye lots** goes to review, needs a CFA from each lot | No single lot covers 80 yd |
-| EML-015 | 12 m becomes 13.25 yd; "green velvet" is read as Velvet Plush Moss and flagged to confirm; out of stock, so not reserved | Unit conversion + inferred color + zero stock |
+| EML-015 | 12 m becomes 13.25 yd; "green velvet" is quoted as Velvet Plush Moss (the only green), named in the email, no confirmation hold; out of stock, so not reserved and goes to review | Unit conversion + unique color match + zero stock |
 | EML-016 | $34.9k quote, 120 yd short on Canvas White, goes to manager review | Shortage + split lot + high value + need-by date |
 | EML-017 | Clean quote with the $25 cut fee is **sent automatically** and held | No flags |
 | EML-018 | Budgetary quote, no hold placed | Customer said pricing only |
@@ -91,4 +91,5 @@ Ambiguities in the brief and data, and the call I made on each:
 18. **Website requests are structured, like the real site.** The brief describes a free-text form, but on perennialsfabrics.com a sample is added to the cart from a product page (one colorway = one variant SKU, plus a Project Type), and "Request A Quote" sends Length + unit, Date Needed, CFA Waived / Requested and Project Name. So a web customer cannot name a fabric that doesn't exist, and AI extraction is only used on email. Each WEB row was converted once into its cart (`data/web_cart_submissions.json`); the original message is kept as the order note, and "everything" / "all your solids" / "every color of X" became the SKUs those imply. A cart SKU missing from the ERP (e.g. a stale cart) is flagged, never substituted.
 19. **Guest sample checkout is allowed.** The real site steers samples through a trade account (resale number), which would move qualification to registration. Allowing guest checkout keeps lead qualification (stage 2) meaningful for this exercise.
 20. **CFA (cutting for approval)** is the term for the customer approving a dye lot. A split across lots asks for a CFA from each lot; "CFA Requested" on the web quote form creates a CFA cutting order from the held lot.
-21. The sheet's *Type* column is used for sample vs. quote routing. In production the LLM would classify intent for the shared inbox.
+21. **Colors are resolved before anyone is asked.** If an email's description fits exactly one catalog SKU ("green velvet" = Moss), it is quoted and named in the email, with no hold. If several colorways fit ("the canvas"), the customer's own sample orders decide it. Only if that still leaves more than one does the system draft a single question listing the colorways and current stock.
+22. The sheet's *Type* column is used for sample vs. quote routing. In production the LLM would classify intent for the shared inbox.

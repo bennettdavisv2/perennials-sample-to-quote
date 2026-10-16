@@ -81,8 +81,38 @@ def test_backorder_priced_not_reserved(wf):
     assert r["stages"][6]["status"] == "skipped" and any("Backorder" in f for f in r["flags"])
 
 
-def test_green_velvet_flagged_for_confirmation(wf):
-    assert any("interpreted as" in f for f in wf.results["EML-015"]["flags"])
+def test_unique_color_match_is_quoted_without_a_confirmation_hold(wf):
+    # "green velvet": Velvet Plush only comes in one green (Moss), so no back-and-forth is needed.
+    r = wf.results["EML-015"]
+    q = next(q for q in wf.crm.quotes if q["id"] == r["quote_id"])
+    assert [l["sku"] for l in q["lines"]] == ["PF-1004"]
+    assert not any("interpreted as" in f for f in r["flags"])
+    assert "Velvet Plush in Moss" in r["email"]["body"]          # named, so the customer can catch a mistake
+
+
+def _email(w, base_id, new_id, message):
+    base = next(r for r in w.inbox if r["id"] == base_id)
+    return {**base, "id": new_id, "message": message, "received": base["received"].replace(month=11)}
+
+
+def test_ambiguous_color_resolved_from_sample_history():
+    # Priya sampled Canvas Solid White (WEB-006); "the canvas" could be White or Black.
+    w = Workflow(mode="rules")
+    w.process_all()
+    res = w.process(_email(w, "EML-016", "EML-T1", "Need 40 yds of the canvas for the cabanas."))
+    q = next(q for q in w.crm.quotes if q["id"] == res["quote_id"])
+    assert [l["sku"] for l in q["lines"]] == ["PF-1010"]
+    assert not any("could be" in f for f in res["flags"])
+
+
+def test_still_ambiguous_drafts_one_question_with_stock():
+    # Mara sampled both Coastal Linen colors (WEB-004), so history can't decide: ask once, with stock.
+    w = Workflow(mode="rules")
+    w.process_all()
+    res = w.process(_email(w, "EML-017", "EML-T2", "Can I get 10 yds of the linen?"))
+    assert res["outcome"] == "Needs review: nothing priceable"
+    body = res["email"]["body"]
+    assert "Sand (" in body and "Charcoal (" in body and "yd in stock" in body
 
 
 def test_approve_review_places_samples():

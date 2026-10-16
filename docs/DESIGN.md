@@ -60,7 +60,7 @@ Automation handles the clear cases: spam, known trade accounts, clean quotes. Pe
 
 - **Qualification gray zone:** trade language on a personal email address, or no signal. A rep verifies the resale certificate or website.
 - **Open-ended or oversized sample asks** ("everything you have", over 10 SKUs). A rep narrows the list. This is also a sales conversation worth having.
-- **Anything the AI inferred from an email** ("green velvet" read as Moss), or where Claude and the rules disagree. Website carts don't need this: the SKU is exact.
+- **A color the system can't settle on its own.** A unique match ("green velvet" = Moss) is quoted and named in the email; several matches are resolved from the customer's sample history (what we sampled to them is what they're quoting). Only a real tie becomes a drafted one-line question with stock per colorway. Also: Claude and the rules disagree, or Claude named a SKU that doesn't exist. Website carts need none of this: the SKU is exact.
 - **Inventory problems:** split dye lots (the customer approves a CFA from each lot), shortages, backorder vs. "ASAP". These need purchasing/production input on lead time.
 - **High-value quotes** (over $20k in the PoC) go to a manager. Policy changes, such as discount overrides, belong to sales ops.
 - **Do Not Sell** hits notify the account owner.

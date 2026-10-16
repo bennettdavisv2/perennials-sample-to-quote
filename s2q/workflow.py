@@ -85,6 +85,10 @@ class Workflow:
         self.reviews.append(item)
         return item
 
+    def _sampled_skus(self, erp_customer: str) -> set[str]:
+        return {l["sku"] for so in self.erp.sales_orders if so["type"] == "Sample" and so["customer"] == erp_customer
+                for l in so["lines"]}
+
     def _sku_desc(self, sku):
         it = self.erp.get_item(sku)
         return f"{it['fabric']} - {it['color']} ({sku})"
@@ -263,12 +267,23 @@ class Workflow:
         flags = list(res["flags"])
         flags += [n for n in res["extract_notes"] if "disagree" in n]
         flags += [f"Cart line {s} is not an item in the ERP: not quoted" for s in ext.get("invalid_skus", [])]
-        lines, line_desc, cust_notes, alloc_plan = [], [], [], []
+        lines, line_desc, cust_notes, alloc_plan, questions = [], [], [], [], []
+        sampled = self._sampled_skus(cust)
         for it in ext["items"]:
-            if it["ambiguous"] or len(it["skus"]) != 1:
-                flags.append(f"'{it['reference']}' could be {it['skus']}: confirm color before quoting")
-                continue
-            sku = it["skus"][0]
+            skus = it["skus"]
+            if len(skus) > 1:
+                # Several colorways fit ("the canvas"). What we sampled to this customer usually settles it.
+                hit = [s for s in skus if s in sampled]
+                if len(hit) == 1:
+                    skus = hit
+                    cust_notes.append(f"Quoted in {self.erp.get_item(hit[0])['color']}, the colorway we sampled to you.")
+                else:
+                    why = "sampled more than one of them" if hit else "no sample history to go on"
+                    opts = " or ".join(f"{i['color']} ({i['available']:g} yd in stock)" for i in map(self.erp.get_item, skus))
+                    flags.append(f"'{it['reference']}' could be {skus} ({why}): drafted a question to the customer")
+                    questions.append(f"Which {self.erp.get_item(skus[0])['fabric']} did you mean: {opts}?")
+                    continue
+            sku = skus[0]
             item = self.erp.get_item(sku)
             if it["quantity"] is None:
                 flags.append(f"No quantity for {self._sku_desc(sku)}")
@@ -278,9 +293,12 @@ class Workflow:
             conv = f" ({it['quantity']:g} {it['unit']} converted)" if converted else ""
             if converted:
                 cust_notes.append(f"{it['quantity']:g} {it['unit']} quoted as {yards:g} yd (rounded up to the nearest 1/4 yd).")
-            if it.get("inferred"):
+            if it.get("needs_confirm"):  # e.g. the LLM named a SKU that doesn't exist
                 flags.append(f"'{it['reference']}' interpreted as {self._sku_desc(sku)}: confirm with customer")
-                cust_notes.append(f"We read '{it['reference']}' as {item['fabric']} in {item['color']}; let us know if you meant another color.")
+            if it.get("inferred"):
+                # Only one catalog SKU fits ("green velvet" = Velvet Plush Moss): quote it, no hold. Naming it
+                # in the email lets the customer catch a mistake without an extra round trip.
+                cust_notes.append(f"We read '{it['reference']}' as {item['fabric']} in {item['color']}.")
 
             quote_yards, reserve = yards, True
             alloc = self.erp.allocate(sku, yards)
@@ -325,10 +343,14 @@ class Workflow:
             flags.append(f"High-value quote (${total:,.0f} > ${HIGH_VALUE:,}): manager approval")
         if ext.get("need_by"):
             flags.append(f"Customer needs delivery {ext['need_by']}: confirm ship date")
+        cust_notes += questions
         if not lines:
             self._stage(res, 5, "review", "Nothing could be priced: " + "; ".join(flags))
             self._stage(res, 6, "n/a", "")
-            self._review(res, "Price quote", "; ".join(flags), "Clarify with customer", "none", {})
+            if questions:
+                res["email"] = emails.clarifying_question(req["name"], questions)
+            self._review(res, "Price quote", "; ".join(flags),
+                         "Send the drafted question to the customer" if questions else "Clarify with customer", "none", {})
             res["flags"] = flags
             res["outcome"] = "Needs review: nothing priceable"
             return

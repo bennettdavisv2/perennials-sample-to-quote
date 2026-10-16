@@ -264,7 +264,7 @@ class LLMExtractor:
             bad = [s for s in it.get("skus", []) if s not in self.valid]
             it["skus"] = [s for s in it.get("skus", []) if s in self.valid]
             if bad:  # model named a SKU that doesn't exist: keep the valid ones, force a human check
-                it["inferred"] = True
+                it["inferred"] = it["needs_confirm"] = True
                 it["ambiguous"] = len(it["skus"]) != 1
                 it["reference"] += f" (dropped unknown SKUs {bad})"
         out["items"] = [it for it in out.get("items", []) if it["skus"]]

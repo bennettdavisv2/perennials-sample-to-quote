@@ -50,3 +50,11 @@ def quote_email(name, quote, lines_desc, notes, valid_until, budgetary, trade=Tr
         body.append(f"We've placed a 14-day hold on the in-stock yardage so it's ready when {who}.")
     body += ["", "Best,", "Perennials Trade Team" if trade else "Perennials Customer Care"]
     return {"subject": f"Perennials {kind} {quote['id']}", "body": "\n".join(body)}
+
+
+def clarifying_question(name, questions):
+    """One email instead of a thread: the options and stock come from the ERP."""
+    body = [f"Hi {_first(name)},", "", "Thanks for the quote request. One quick question so we can price it:", ""]
+    body += [f"  - {q}" for q in questions]
+    body += ["", "Reply with the color and we'll send the quote right away.", "", "Best,", "Perennials Trade Team"]
+    return {"subject": "Quick question on your Perennials quote", "body": "\n".join(body)}
