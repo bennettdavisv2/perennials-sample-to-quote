@@ -141,5 +141,19 @@
     "project_type": null,
     "project_name": "Sample library",
     "note": "Building our library. Please send every color of Velvet Plush, Coastal Linen, Canvas Solid, Ribbed Chenille, Tidal Herringbone, Garden Trellis, Mesh Sling, Faux Leather, Plaid Check, Rope Texture, and Basketweave."
+  },
+  "WEB-014": {
+    "project_type": "residential",
+    "project_name": "Beach house living room, Malibu",
+    "note": "Sidemark: LOWE / Malibu living room.",
+    "quote_lines": [
+      {
+        "sku": "PF-1006",
+        "length": 90,
+        "unit": "feet",
+        "date_needed": "2026-11-20",
+        "cfa": "requested"
+      }
+    ]
   }
 }

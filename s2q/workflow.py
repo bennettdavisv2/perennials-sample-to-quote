@@ -274,7 +274,9 @@ class Workflow:
         # A follow-up on the same opportunity that touches the same SKUs (or says "update") revises
         # the open quote. Release the old hold first so availability is computed correctly.
         prior = self.crm.open_quote(opp["id"])
-        req_skus = {s for it in ext["items"] for s in it["skus"]}
+        # Only lines we know the SKU for count toward "same SKUs = revision": an ambiguous "the linen" must not
+        # supersede an open linen quote (and release its hold) before we even know which color they mean.
+        req_skus = {it["skus"][0] for it in ext["items"] if len(it["skus"]) == 1}
         revision_of = None
         if prior and (ext.get("revision") or {l["sku"] for l in prior["lines"]} & req_skus):
             revision_of = prior

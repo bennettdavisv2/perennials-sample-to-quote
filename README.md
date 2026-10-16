@@ -75,14 +75,14 @@ pip install -r requirements.txt
 
 streamlit run app.py          # demo at http://localhost:8501
 python -m s2q.cli -v          # or headless: every workbook request, stage by stage, with email drafts
-pytest -q                     # 31 tests
+pytest -q                     # 36 tests
 ```
 
 **Optional: use Claude for email extraction.** Run `export ANTHROPIC_API_KEY=sk-...` before starting. If the key is in a `.env` one folder up, load it with `set -a; source ../.env; set +a`. Set `S2Q_MODEL` to override the model (default `claude-opus-5-5`, low effort). Without a key, the deterministic rules extractor is used and everything works the same. With a key, Claude reads each email and the rules run as a cross-check; if they disagree, the request goes to review. Website carts are structured, so they never go to the LLM.
 
 ## The demo
 
-One app, five pages, sharing one in-memory workflow. It starts **seeded**: the 21 workbook requests are already processed, so the CRM and ERP have history.
+One app, five pages, sharing one in-memory workflow. It starts **seeded**: the 27 workbook requests (21 original + 6 edge cases we added) are already processed, so the CRM and ERP have history.
 
 | Page | What it is |
 |---|---|
@@ -120,6 +120,17 @@ One app, five pages, sharing one in-memory workflow. It starts **seeded**: the 2
 | EML-019 | Backordered (ETA 11/15) vs. "ASAP": priced, not held, goes to review | Can't reserve what isn't there |
 | EML-020 | Student is quoted list price + cut fee; becomes a consumer account | Non-trade pricing |
 | EML-021 | **Revises** Q-0101 to v2: the old hold is released and a new hold placed (87 of 90 yd available) | Follow-up on the same job |
+| *Rows we added (see "We extended the test data" below)* | | |
+| WEB-014 | Website quote form: 90 **feet** becomes 30 yd, a hold on one dye lot, and a **CFA** cutting order from that lot; review only to confirm the date needed | The real site's Request A Quote fields |
+| EML-022 | "sixty yards" in words. Rules can't read it, so they draft a question; Claude prices it, but the two disagree, so it goes to review | Shows what the AI adds, and the disagreement guard |
+| EML-023 | "the linen" from Mara, who sampled both colors: one drafted question with stock per color. Her open linen quote is **not** superseded | Real color tie; also caught a bug (an ambiguous line used to trigger a revision and release the hold) |
+| EML-024 | "price the plaid" with no quantity: one drafted question | Missing quantity |
+| EML-025 | 30 yd of discontinued Sunset Ikat: quoted and held for the 22 yd that remain | Discontinued rule |
+| EML-026 | Hannah (Gmail, trade check still open) asks for a price: joins the existing review with a trade-verification email | Caught a gap: Claude read her as a consumer and auto-sent a list-price quote |
+
+## We extended the test data
+
+The 21 requests Bertram provided all pass, but they don't exercise several cases the workflow has to handle, so we **added 6 rows to the workbook's Inbound Requests tab** (WEB-014, EML-022 to EML-026). Each is marked in a new **Notes** column and in the Read Me tab. The original file is unchanged in `case-study-prompt/` for comparison. The added rows found two real issues, both now fixed and tested: an ambiguous color could supersede an open quote and release its hold, and Claude's reading of a sender could skip an open trade review. Every row runs under both the rules and Claude; outcomes match except EML-022, where they are meant to differ.
 
 ## Layout
 

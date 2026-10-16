@@ -105,14 +105,6 @@ def test_ambiguous_color_resolved_from_sample_history():
     assert not any("could be" in f for f in res["flags"])
 
 
-def test_still_ambiguous_drafts_one_question_with_stock():
-    # Mara sampled both Coastal Linen colors (WEB-004), so history can't decide: ask once, with stock.
-    w = Workflow(mode="rules")
-    w.process_all()
-    res = w.process(_email(w, "EML-017", "EML-T2", "Can I get 10 yds of the linen?"))
-    assert res["outcome"] == "Needs review: nothing priceable"
-    body = res["email"]["body"]
-    assert "Sand (" in body and "Charcoal (" in body and "yd in stock" in body
 
 
 def test_approve_review_places_samples():
@@ -196,20 +188,6 @@ def test_unknown_cart_sku_is_flagged_not_substituted():
     assert any("PF-9999" in f for f in res["flags"])
 
 
-def test_web_quote_form_with_cfa_and_feet():
-    """The site's Request A Quote form: Length in Feet, Date Needed, CFA Requested."""
-    w = Workflow(mode="rules")
-    base = next(r for r in w.inbox if r["id"] == "EML-017")  # Mara Lowe, existing trade contact
-    req = {**base, "id": "WEB-Q01", "channel": "Website form", "message": "",
-           "cart": {"project_name": "Malibu beach house", "project_type": "residential", "note": "",
-                    "quote_lines": [{"sku": "PF-1006", "length": 30, "unit": "Feet",
-                                     "date_needed": "2026-11-20", "cfa": "requested"}]}}
-    res = w.process(req)
-    q = next(q for q in w.crm.quotes if q["id"] == res["quote_id"])
-    assert q["lines"][0]["yards"] == 10
-    cfa = next(s for s in w.erp.sales_orders if s["id"] == q["cfa_order_id"])
-    assert cfa["type"] == "CFA" and cfa["lines"][0]["sku"] == "PF-1006"
-    assert res["extraction"]["need_by"] == "2026-11-20"
 
 
 # ---------- every review comes with a drafted customer message ----------
@@ -236,18 +214,72 @@ def test_over_limit_drafts_pick_your_ten():
     assert "up to 10" in body and "You picked 14" in body
 
 
-def test_missing_quantity_becomes_a_question_and_approve_sends_it():
-    w = Workflow(mode="rules")
-    w.process_all()
-    base = next(r for r in w.inbox if r["id"] == "EML-017")
-    res = w.process({**base, "id": "EML-T3", "message": "Could you price the herringbone for me?"})
-    rv = next(r for r in w.reviews if r["request"] == "EML-T3")
-    assert rv["action"] == "send_question" and "How much Tidal Herringbone" in rv["message"]["body"]
-    w.approve(rv["id"])
-    assert rv["status"].startswith("Question sent") and res["outcome"] == "Question sent: waiting on customer"
 
 
 def test_quote_review_cannot_be_sent_as_a_question(wf):
     rv = next(r for r in wf.reviews if r["action"] == "send_quote" and r["status"] == "Open")
     wf.ask(rv["id"])
     assert not rv["asked"] and rv["status"] == "Open"
+
+
+# ---------- edge-case rows we added to the workbook (WEB-014, EML-022 .. EML-026) ----------
+def test_added_rows_outcomes(wf):
+    out = {k: v["outcome"] for k, v in wf.results.items()}
+    assert len(wf.inbox) == 27
+    assert out["WEB-014"].endswith("needs review")              # need-by date to confirm
+    assert out["EML-022"] == "Needs review: nothing priceable"   # rules can't read "sixty yards"
+    assert out["EML-023"] == "Needs review: nothing priceable"   # color tie
+    assert out["EML-024"] == "Needs review: nothing priceable"   # no quantity
+    assert out["EML-025"].endswith("needs review")              # discontinued: remaining stock only
+    assert out["EML-026"] == "Needs review: unknown sender"      # trade status still under review
+
+
+def test_web_quote_form_feet_and_cfa(wf):
+    r = wf.results["WEB-014"]
+    q = next(q for q in wf.crm.quotes if q["id"] == r["quote_id"])
+    assert q["lines"][0]["yards"] == 30                         # 90 ft
+    cfa = next(s for s in wf.erp.sales_orders if s["id"] == q["cfa_order_id"])
+    assert cfa["type"] == "CFA" and cfa["lines"][0]["sku"] == "PF-1006"
+    assert r["extraction"]["need_by"] == "2026-11-20"
+
+
+def test_numbers_in_words_become_questions_under_rules(wf):
+    body = wf.results["EML-022"]["email"]["body"]
+    assert "How much Mesh Sling in Graphite" in body and "How much Canvas Solid in White" in body
+
+
+def test_color_tie_asks_and_does_not_supersede_the_open_linen_quote(wf):
+    body = wf.results["EML-023"]["email"]["body"]
+    assert "Sand (" in body and "Charcoal (" in body and "yd in stock" in body
+    linen = next(q for q in wf.crm.quotes if q["id"] == wf.results["WEB-014"]["quote_id"])
+    assert linen["status"] != "Superseded" and linen["reservation_id"]   # hold kept
+
+
+def test_missing_quantity_question_is_sent_on_approve():
+    w = Workflow(mode="rules")
+    w.process_all()
+    rv = next(r for r in w.reviews if r["request"] == "EML-024")
+    assert rv["action"] == "send_question" and "How much Plaid Check" in rv["message"]["body"]
+    w.approve(rv["id"])
+    assert rv["status"].startswith("Question sent")
+    assert w.results["EML-024"]["outcome"] == "Question sent: waiting on customer"
+
+
+def test_discontinued_quotes_only_remaining_stock(wf):
+    q = next(q for q in wf.crm.quotes if q["id"] == wf.results["EML-025"]["quote_id"])
+    assert q["lines"][0]["yards"] == 22 and q["lines"][0]["requested_yards"] == 30
+
+
+def test_pending_trade_review_is_not_requalified_by_a_new_message(wf):
+    r = wf.results["EML-026"]
+    assert "already under review" in r["qualification"]["reasons"][0]
+    assert "resale certificate" in r["email"]["body"]
+    assert not any(a["name"].startswith("Hannah Kim") for a in wf.crm.accounts)   # no consumer account created
+
+
+def test_ai_and_rules_disagreeing_on_an_unknown_sender_goes_to_review():
+    from s2q import qualify
+    ext = {"segment_hint": "consumer", "segment_alt": "unclear", "signals": []}
+    d = qualify.decide(ext, {"account": None, "lead": None}, {"email": "x@gmail.example"})
+    assert d["decision"] == "review" and "AI read the sender" in d["reasons"][-1]
+

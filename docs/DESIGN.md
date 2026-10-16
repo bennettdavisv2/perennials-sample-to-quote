@@ -30,6 +30,8 @@ The sample-to-quote journey crosses a website, a CRM and an ERP that don't talk 
 
 The orchestrator talks to systems only through adapters (`MockCRM`, `MockERP`). Production swaps in `SalesforceCRM` / `NetSuiteERP` with the same methods, and the audit log already records the real API call behind each mock call. It would run as a small Python service on AWS: idempotent webhooks, a queue that keeps each customer's requests in order, retries with a dead-letter queue, and external ids on every cross-system record.
 
+**Test data (a design decision).** Beyond the 21 provided requests, we added 6 edge-case rows to the workbook (marked in its Notes column; original kept in `case-study-prompt/`): a website quote in feet with CFA, quantities written as words, a real color tie during an open quote, a missing quantity, a discontinued fabric, and a quote from a sender whose trade check is still open. Two of them exposed real gaps that are now fixed: an ambiguous line could supersede an open quote, and the AI's reading of a sender could bypass a pending review. Policy now sends any AI-vs-rules disagreement about an unknown sender to a person.
+
 ## 3. Source of truth
 
 | Data | Owner | Notes |

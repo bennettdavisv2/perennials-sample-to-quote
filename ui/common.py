@@ -2,7 +2,7 @@
 
 One Workflow lives in the Streamlit session and every page (website, CRM, ERP, old vs new,
 ops console) reads and writes it, the way the real systems would share data through the
-integration layer. It starts seeded: the 21 workbook requests are already processed, so
+integration layer. It starts seeded: the 27 workbook requests (21 original + 6 added edge cases) are processed, so
 the CRM and ERP have history and Dana Ruiz is a known customer.
 """
 from __future__ import annotations

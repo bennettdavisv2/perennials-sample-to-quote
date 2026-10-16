@@ -2,7 +2,7 @@
 
     streamlit run app.py
 
-Pages share one in-memory workflow (seeded with the 21 workbook requests):
+Pages share one in-memory workflow (seeded with the 27 workbook requests: 21 original + 6 added edge cases):
   Website      mock storefront: browse, add samples / quote lines, check out
   CRM          Salesforce-style: quotes@ inbox, leads, opportunities, tasks
   ERP          NetSuite-style: inventory by dye lot, sales orders, customers

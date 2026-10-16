@@ -20,8 +20,9 @@ def decide(ext: dict, ident: dict, req: dict) -> dict:
     seg = ext["segment_hint"]
     free = is_free_email(req["email"])
     reasons = list(ext.get("signals", []))
+    alt = ext.get("segment_alt")  # set when Claude and the rules read the sender differently
 
-    if seg == "spam":
+    if seg == "spam" and not alt:
         return {"decision": "spam", "reasons": reasons + ["spam content"]}
     if acct and acct.get("status") == "Do Not Sell":
         return {"decision": "disqualified", "reasons": [f"account {acct['id']} is '{acct['type']}' / Do Not Sell"]}
@@ -29,6 +30,13 @@ def decide(ext: dict, ident: dict, req: dict) -> dict:
         return {"decision": "qualified", "reasons": [f"matched trade account {acct['id']} ({ident['match']})"]}
     if acct and acct.get("type", "").startswith("Consumer"):
         return {"decision": "non_trade", "reasons": [f"matched consumer account {acct['id']}"]}
+    # No CRM account below this line, so the decision rests on reading the message. Two guards:
+    lead = ident.get("lead")
+    if lead and lead.get("status") == "Needs Review":
+        return {"decision": "review", "reasons": [f"sender's trade status is already under review ({lead['id']}); "
+                                                  "a new message doesn't re-qualify them"]}
+    if alt:
+        return {"decision": "review", "reasons": reasons + [f"AI read the sender as '{seg}', rules as '{alt}'"]}
     if seg == "competitor":
         return {"decision": "review", "reasons": reasons + ["looks like a reseller/competitor but no CRM match"]}
     if seg in ("consumer", "student"):

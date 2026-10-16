@@ -20,11 +20,12 @@ There were two phases. First, Claude produced a rough draft from the brief and t
 | **Model the website as structured, like the real site** | The brief says "free text form". I had Claude check perennialsfabrics.com: samples are added per colorway from product pages, so a customer can't name the wrong fabric. AI is now used only for email. |
 | **Allow guest sample checkout** | The real site uses a trade login. Keeping guest checkout keeps lead qualification meaningful for the exercise; it's stated as an assumption. |
 | **Two front doors, one pipeline** | Website and email are the two intake channels; everything after intake is shared. I folded the email demo into the CRM's quotes@ inbox instead of a separate mock mail app. |
+| **Extend the provided data with 6 edge cases** | So reviewers can see the harder cases tested, not just the provided rows. Two of them exposed real gaps: an ambiguous "the linen" could supersede an open quote and release its hold, and Claude reading a Gmail sender as a consumer bypassed her open trade review and auto-sent a list-price quote. Both fixed and tested. |
 | **Demo and handoff scope** | A Streamlit multipage demo seeded with the workbook, labelled estimates for today's process, and a handoff that assumes a custom AWS service, Google Workspace, and checklist-level specs. |
 
 ## Where it helped
 
-- Turned all 21 requests into concrete edge cases and tests: dedupe across two email addresses, a Do Not Sell account, dye-lot splits, a quote revision.
+- Turned all 21 original requests into concrete edge cases and tests, then helped design 6 more for cases the data didn't cover: dedupe across two email addresses, a Do Not Sell account, dye-lot splits, a quote revision.
 - Wrote the adapters, the demo pages, and an integration log that maps every mock call to the real Salesforce or NetSuite API.
 - Surfaced real-system details I'd want an engineer to hear early:
   - Salesforce quote lines need each item as a Product with a price-book entry.

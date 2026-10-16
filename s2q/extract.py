@@ -402,5 +402,6 @@ class Extractor:
             notes.append("LLM and rules disagree on items/quantities: rep should confirm. "
                          f"rules={json.dumps(rules['items'])}")
         if ext["segment_hint"] != rules["segment_hint"]:
+            ext["segment_alt"] = rules["segment_hint"]  # qualification sends this to review when there's no CRM account
             notes.append(f"LLM segment '{ext['segment_hint']}' vs rules '{rules['segment_hint']}'")
         return ext, notes
