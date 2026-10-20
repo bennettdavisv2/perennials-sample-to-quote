@@ -100,5 +100,5 @@ class SalesforceCRM:
 
     # ---------- customer email (S7) ----------
     def send_email(self, contact_id, subject, body):
-        """POST {API}/actions/standard/emailSimple  from the org-wide quotes@ address (logged on the Contact)"""
+        """POST {API}/actions/standard/emailSimple  from the org-wide quotes@perennialsfabrics.com address (logged on the Contact)"""
         raise NotImplementedError

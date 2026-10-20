@@ -19,7 +19,7 @@ The sample-to-quote journey crosses a website, a CRM and an ERP that don't talk 
 
 ```
  Website (WooCommerce cart) ──webhook─────┐
- Shared inbox (quotes@)    ──Gmail push───┤
+ Shared inbox (quotes@perennialsfabrics.com)    ──Gmail push───┤
                                           ▼
                    Orchestrator: extract → identify → decide → act → escalate
                           │                                    │
@@ -44,7 +44,7 @@ The orchestrator talks to systems only through adapters (`MockCRM`, `MockERP`). 
 
 ## 4. How it maps to Salesforce and NetSuite
 
-- **Intake:** WooCommerce `order.created` webhook (variant SKU = NetSuite item; Project Type, Length, CFA as line-item fields); Gmail API watch on quotes@ for email.
+- **Intake:** WooCommerce `order.created` webhook (variant SKU = NetSuite item; Project Type, Length, CFA as line-item fields); Gmail API watch on quotes@perennialsfabrics.com for email.
 - **Salesforce:** Lead (upserted on an external request id), lead convert through a small Apex endpoint, Opportunity, Quote + QuoteLineItem (items synced from NetSuite as Products), Tasks in a review queue, an Approval Process above $20k, and a Flow that calls the service when a rep approves.
 - **NetSuite:** a pricing RESTlet (trade + volume + cut fee), sample and CFA order forms, lot-level holds, and a daily script that releases expired holds.
 - **Caveat to settle with their admin:** a *Pending Approval* sales order doesn't commit inventory by default, so a real hold needs either an approved "Hold" order or a transfer to a hold location. The PoC keeps that choice inside the adapter.

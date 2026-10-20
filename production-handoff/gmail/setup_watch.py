@@ -1,4 +1,4 @@
-"""Start (or renew) the Gmail watch on quotes@ so new mail is pushed to the integration service.
+"""Start (or renew) the Gmail watch on quotes@perennialsfabrics.com so new mail is pushed to the integration service.
 SKELETON / SPEC: not run. Handoff E1–E3.
 
 Prerequisites (Google Cloud + Workspace admin):
@@ -6,14 +6,14 @@ Prerequisites (Google Cloud + Workspace admin):
   2. Push subscription on that topic -> https://<api-gateway>/webhooks/gmail, with an OIDC token
      (service account + audience = that URL) so handlers.gmail_push can verify the caller.
   3. A service account with domain-wide delegation, scope https://www.googleapis.com/auth/gmail.modify,
-     impersonating quotes@ (read new mail, add the "s2q/processed" label).
+     impersonating quotes@perennialsfabrics.com (read new mail, add the "s2q/processed" label).
 
 A watch expires after 7 days: run this daily (EventBridge schedule in template.yaml) and store the
 returned historyId / expiration in Postgres `gmail_state`.
 """
 from __future__ import annotations
 
-MAILBOX = "quotes@perennials.example"          # TODO: the real shared inbox
+MAILBOX = "quotes@perennialsfabrics.com"          # assumed shared inbox address; confirm with Perennials
 TOPIC = "projects/<gcp-project>/topics/s2q-gmail"
 
 

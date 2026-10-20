@@ -4,46 +4,49 @@ Today the sample-to-quote journey crosses three systems that don't talk to each 
 
 ## Old flow vs new flow
 
+Both diagrams use the same numbered steps: step 3 today is the same step as step 3 with the workflow. The top row is the sample request (the brief's stages 1–3); the bottom row is the quote request (stages 4–6).
+
 **Today: people carry the data between systems.**
 
 ```mermaid
 flowchart TB
-  subgraph S["Sample request"]
+  subgraph S["Sample request · stages 1–3"]
     direction LR
-    o1["Designer submits<br/>the web form"] --> o2["CSR reads the<br/>notification email"] --> o3["✍️ CSR retypes it<br/>into a Salesforce Lead"] --> o4["Rep checks website /<br/>resale cert, qualifies"] --> o5["✉️ Rep emails<br/>Order Ops"] --> o6["✍️ Ops retypes the<br/>order into NetSuite"]
+    o1["1 · Designer submits<br/>the web form"] --> o2["2 · CSR reads the<br/>notification email"] --> o3["3 · ✍️ CSR retypes it<br/>into a Salesforce Lead"] --> o4["4 · Rep checks website /<br/>resale cert, qualifies"] --> o5["5 · ✉️ Rep emails<br/>Order Ops"] --> o6["6 · ✍️ Ops retypes the<br/>order into NetSuite"]
   end
-  subgraph Q["Quote request, weeks later"]
+  subgraph Q["Quote request · stages 4–6, weeks later"]
     direction LR
-    o7["Designer emails<br/>for a quote"] --> o8["✉️ Rep: checking<br/>stock and price"] --> o9["Rep checks NetSuite +<br/>pricing spreadsheet"] --> o10["✍️ Rep retypes quote into<br/>Salesforce, ✉️ sends PDF"] --> o11["✉️ Rep emails Ops:<br/>please hold"] --> o12["✍️ Ops picks a dye lot,<br/>keys a pending order"]
+    o7["7 · Designer emails<br/>for a quote"] --> o8["8 · ✉️ Rep: checking<br/>stock and price"] --> o9["9 · Rep checks NetSuite +<br/>pricing spreadsheet"] --> o10["10 · ✍️ Rep retypes quote into<br/>Salesforce, ✉️ sends PDF"] --> o11["11 · ✉️ Rep emails Ops:<br/>please hold"] --> o12["12 · ✍️ Ops picks a dye lot,<br/>keys a pending order"]
   end
   S --> Q
   classDef pain fill:#fdecea,stroke:#d93025,color:#222
   class o3,o5,o6,o8,o10,o11,o12 pain
 ```
 
-**New: one integration layer moves the data; a person steps in only for judgment.**
+**New: the integration layer does every step; a person steps in only when the workflow isn't sure.**
 
 ```mermaid
 flowchart TB
-  n1["Website cart<br/>exact SKU + Project Type"] -- "WooCommerce webhook<br/>order.created" --> orch
-  n2["Email to quotes@"] -- "Gmail / Graph push" --> ai["AI reads the email<br/>Claude, checked against NetSuite items"]
-  ai --> orch{{"Orchestrator service<br/>Lambda or Workato · idempotent · audit log"}}
-  orch -- "SOQL + policy table" --> dq["Dedupe + qualify<br/>in seconds"]
-  orch -- "RESTlet" --> pr["Price: trade + volume<br/>+ cut fee rules"]
-  orch -- "REST salesOrder" --> ns[("NetSuite<br/>sample order · dye-lot hold · CFA")]
-  orch -- "only when unsure:<br/>Flow / Approval Process" --> rv["🧑 Rep task in Salesforce"]
-  orch --> em["Customer email drafted<br/>from NetSuite numbers"]
-  dq -- "REST + Lead Convert" --> sf[("Salesforce<br/>Lead · Account · Opportunity · Quote")]
-  pr --> sf
+  subgraph S["Sample request · stages 1–3"]
+    direction LR
+    n1["1 · Designer adds samples<br/>to the cart<br/><i>exact SKU + Project Type</i>"] --> n2["2 · Order arrives<br/>instantly<br/><i>WooCommerce webhook</i>"] --> n3["3 · Lead created,<br/>duplicates matched<br/><i>Salesforce REST + SOQL</i>"] --> n4["4 · Qualified<br/>in seconds<br/><i>policy table</i>"] --> n5["5 · Converted, linked<br/>to the opportunity<br/><i>Apex lead convert</i>"] --> n6["6 · Sample order in NetSuite,<br/>confirmation email<br/><i>NetSuite REST</i>"]
+    n4 -.-> h4["🧑 Gray zone only:<br/>rep task with a<br/>drafted email"]
+  end
+  subgraph Q["Quote request · stages 4–6, weeks later"]
+    direction LR
+    n7["7 · Designer emails<br/>quotes@perennialsfabrics.com<br/>or uses the quote form<br/><i>Gmail push / webhook</i>"] --> n8["8 · AI reads the email<br/>no holding reply<br/><i>Claude, checked vs catalog</i>"] --> n9["9 · Price + dye-lot stock<br/>in one step<br/><i>NetSuite RESTlet</i>"] --> n10["10 · Quote on the opportunity,<br/>email drafted<br/><i>Salesforce Composite API</i>"] --> n11["11 · Hold on one dye lot,<br/>released after 14 days<br/><i>NetSuite order + script</i>"] --> n12["12 · Quote sent<br/>automatically<br/><i>Salesforce email</i>"]
+    n10 -.-> h10["🧑 Flags or > $20k only:<br/>rep approves the<br/>drafted quote"]
+  end
+  S --> Q
   classDef auto fill:#e6f4ea,stroke:#1e8e3e,color:#222
   classDef human fill:#fff4e5,stroke:#e8a33d,color:#222
-  classDef sys fill:#e8f0fe,stroke:#1a73e8,color:#222
-  class n1,n2,ai,orch,dq,pr,em auto
-  class rv human
-  class sf,ns sys
+  class n1,n2,n3,n4,n5,n6,n7,n8,n9,n10,n11,n12 auto
+  class h4,h10 human
 ```
 
-🔴 retyping or an email between people · 🟢 automated · 🟠 a person decides · 🔵 system of record
+Every green step runs in the integration service (AWS), calling the Salesforce and NetSuite APIs. The table below says how each is built, and [`production-handoff/`](production-handoff/) has the building blocks.
+
+🔴 retyping or an email between people · 🟢 automated · 🟠 a person decides
 
 ### What changed, and how it's built
 
@@ -53,7 +56,7 @@ flowchart TB
 | 2 | **No duplicate customers.** A second email address at the same firm is recognised as the same person. | SOQL on email, then domain + name; Salesforce Duplicate Rules as a backstop |
 | 3 | **Qualification in seconds.** Known trade accounts and clear cases are handled; reps see only the gray zone (e.g. "designer" on a Gmail address). | Policy table in the orchestrator; `Lead.Status` + `Qualification_Reason__c`; review Task assigned by Flow |
 | 4 | **Sample orders reach NetSuite on their own,** linked to the Salesforce opportunity. | NetSuite REST `salesOrder` (Sample form, $0 price level); customer `externalId` = Salesforce Account Id |
-| 5 | **Quote emails are read for the rep.** "80 yds of the navy stripe" becomes SKU + quantity. Colors are settled from the catalog and the customer's own samples before anyone is asked. | Gmail push / Microsoft Graph subscription on quotes@; Claude with structured outputs (email only), validated against the NetSuite item list; rules cross-check |
+| 5 | **Quote emails are read for the rep.** "80 yds of the navy stripe" becomes SKU + quantity. Colors are settled from the catalog and the customer's own samples before anyone is asked. | Gmail push / Microsoft Graph subscription on quotes@perennialsfabrics.com; Claude with structured outputs (email only), validated against the NetSuite item list; rules cross-check |
 | 6 | **No "let me check stock and price" replies.** Price and dye-lot availability come back in the same step. | NetSuite RESTlet (SuiteScript) for trade / volume / cut-fee rules; inventory by lot |
 | 7 | **Quote attached to the opportunity, customer email drafted.** Numbers come only from NetSuite, never from the AI. | Salesforce `Quote` + `QuoteLineItem`, PDF via `ContentVersion`; email template sent from Salesforce |
 | 8 | **Fabric held from one dye lot,** released automatically after 14 days. A split across lots asks for a CFA (cutting for approval). | NetSuite sales order with lot-level inventory detail; scheduled SuiteScript releases expired holds; CFA sales order form |
@@ -95,7 +98,7 @@ One app, five pages, sharing one in-memory workflow. It starts **seeded**: the 2
 | Page | What it is |
 |---|---|
 | 🛍 **Website** | Mock storefront modelled on the real site's flow (not its branding): product page with colorways, **Add Sample** + Project Type, **Request A Quote** (Length in Yards / Feet / Meters, Date Needed, CFA, Project Name), cart, guest checkout. Checkout runs the workflow live. |
-| ☁️ **CRM** | Salesforce-style: the **quotes@ inbox** (send an email as a customer), leads, accounts, **opportunity record pages** with sample orders and quotes, and the rep's task queue. |
+| ☁️ **CRM** | Salesforce-style: the **quotes@perennialsfabrics.com inbox** (send an email as a customer), leads, accounts, **opportunity record pages** with sample orders and quotes, and the rep's task queue. |
 | 🏭 **ERP** | NetSuite-style: inventory by dye lot, sales orders (samples, holds, CFA cuttings), customers keyed to CRM accounts. |
 | ⚖️ **Old vs New** | Pick a customer journey: every automated action next to the manual step it replaces, with totals. |
 | 🛠 **Ops console** | Each request's full story, the review queue, and the integration log (every call with the real API it maps to). |
@@ -152,7 +155,7 @@ s2q/                        Shared core (tested; ships to production unchanged)
   data.py, cli.py           Workbook loader; headless run
 demo/                       Walkthrough app (not shipped)
   app.py, ui/               Streamlit: Website, CRM, ERP, Old vs New, Ops console
-  site.py, baseline.py      Checkout / quotes@ entry points; today's manual steps (estimates)
+  site.py, baseline.py      Checkout / quotes@perennialsfabrics.com entry points; today's manual steps (estimates)
   data/                     Workbook (21 original + 6 added rows) and web carts
   README.md                 How to run it and how to film the walkthrough
 production-handoff/         For engineering (skeletons and specs, not run against real systems)

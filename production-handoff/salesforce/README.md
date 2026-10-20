@@ -24,6 +24,6 @@ See the table in [`../README.md` §3.1](../README.md#31-fields-and-picklists): L
 
 **Task quick actions.** On the review Task's page: **Approve**, **Send question**, **Reject**. Each sets `Decision__c` and completes the Task, which fires the Flow.
 
-**Customer email (S7).** Org-wide email address quotes@ (verified). The service sends through the standard `emailSimple` action so each email is logged on the Contact. Quote PDF template: line items, total, valid-until, hold expiry.
+**Customer email (S7).** Org-wide email address quotes@perennialsfabrics.com (verified). The service sends through the standard `emailSimple` action so each email is logged on the Contact. Quote PDF template: line items, total, valid-until, hold expiry.
 
 **Integration user (S8).** Salesforce Integration user licence; External Client App with OAuth 2.0 JWT bearer flow; permission set `S2Q_Integration`: CRUD on Lead, Contact, Account, Opportunity, OpportunityContactRole, Quote, QuoteLineItem, Task; read Product2/PricebookEntry; Apex class access to `S2QConvertLead`.

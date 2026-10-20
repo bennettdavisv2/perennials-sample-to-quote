@@ -1,4 +1,4 @@
-"""What the website and the quotes@ inbox send into the workflow (used by the demo UI).
+"""What the website and the quotes@perennialsfabrics.com inbox send into the workflow (used by the demo UI).
 
 On perennialsfabrics.com a sample or quote line is added from a product page (one colorway
 = one variant SKU), and checkout adds the contact fields. These helpers build the same
@@ -60,7 +60,7 @@ def submit_checkout(w, customer: dict, samples: list[dict], quotes: list[dict], 
 
 
 def submit_email(w, name: str, company: str, email: str, message: str) -> dict:
-    """An email to the shared quotes@ inbox (free text, read by Claude or the rules)."""
+    """An email to the shared quotes@perennialsfabrics.com inbox (free text, read by Claude or the rules)."""
     req = {"id": _next_id(w, "EML"), "type": "Quote request", "channel": "Email", "received": _now(w),
            "name": name, "company": company or "", "email": email.strip().lower(), "message": message}
     return w.submit(req)

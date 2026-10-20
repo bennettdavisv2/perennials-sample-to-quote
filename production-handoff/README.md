@@ -12,7 +12,7 @@ This is the list of changes engineering would make to put the PoC into productio
 | [`integration-service/`](integration-service/) | `handlers.py` (webhook, Gmail push, Salesforce callback), `worker.py` (queue consumer running `s2q.workflow`), `adapters/salesforce.py` + `adapters/netsuite.py` (same interface as the mocks), `schema.sql`, `template.yaml` (AWS SAM), refactor list | §5 |
 | [`salesforce/`](salesforce/) | Apex `S2QConvertLead` + test outline, field metadata example, specs for the review queue, approval process, callback Flow and integration user | S1–S8 |
 | [`netsuite/`](netsuite/) | `s2q_price_restlet.js` (pricing), `s2q_hold_expiry_mr.js` (daily hold release), pricing-rule custom record | N1–N10 |
-| [`gmail/`](gmail/) | `setup_watch.py` (watch on quotes@, renewed daily), Pub/Sub setup | E1–E4 |
+| [`gmail/`](gmail/) | `setup_watch.py` (watch on quotes@perennialsfabrics.com, renewed daily), Pub/Sub setup | E1–E4 |
 
 **Assumed stack**
 
@@ -22,7 +22,7 @@ This is the list of changes engineering would make to put the PoC into productio
 | CRM | Salesforce Sales Cloud, Enterprise edition or above, with Quotes enabled |
 | ERP | NetSuite with Lot Numbered Inventory (one lot number = one dye lot) |
 | Integration | New Python service on AWS: API Gateway, Lambda, SQS FIFO, RDS Postgres, Secrets Manager, EventBridge |
-| Inbound email | Google Workspace: quotes@ watched through the Gmail API, with Pub/Sub push |
+| Inbound email | Google Workspace: quotes@perennialsfabrics.com watched through the Gmail API, with Pub/Sub push |
 | AI | Claude through the Anthropic API (or AWS Bedrock), used for email intake only |
 
 **Owners:** WC = WooCommerce/WordPress developer · SF = Salesforce admin/developer · NS = NetSuite administrator/SuiteScript developer · INT = integration engineer.
@@ -36,7 +36,7 @@ This is the list of changes engineering would make to put the PoC into productio
 
 ```
 WooCommerce ──order.created webhook (HMAC)──┐
-Gmail quotes@ ──watch → Pub/Sub push (OIDC)─┤
+Gmail quotes@perennialsfabrics.com ──watch → Pub/Sub push (OIDC)─┤
 Salesforce Flow ──approval callback─────────┤
                                             ▼
                  API Gateway → ingest Lambda → SQS FIFO (group = customer email) → worker Lambda
@@ -118,7 +118,7 @@ The order's `customer_note` is the order note. Billing name, company and email g
 | S4 | **Review queue.** | Queue **Sample-to-Quote Review**. The service creates `Task` records (Subject = reason, WhatId = Lead or Quote) assigned to the queue. | S |
 | S5 | **Approval process: quotes.** | On Quote: entry criteria `Status = Pending Rep Review`. Step 1 is the account owner. Step 2, a manager, applies when `GrandTotal > 20000` (PoC `HIGH_VALUE`). | M |
 | S6 | **Approval callback.** | A record-triggered Flow fires when a Quote is approved or rejected, or a review Task is closed. It runs an **HTTP Callout** action (Named Credential → `https://<api>/callbacks/salesforce`) with `{record_id, decision, user}`. The service then does what was waiting: sends the quote, or places the samples. | M |
-| S7 | **Quote PDF and email.** | A quote template for the PDF. Each review Task also stores the drafted customer message (Task description, or a `Drafted_Message__c` long-text field), and a **Send question** quick action on the Task calls the service. The service sends the customer email through the standard `emailSimple` action (`/services/data/vXX.X/actions/standard/emailSimple`) from an org-wide address (quotes@), so every email is logged on the Contact. | M |
+| S7 | **Quote PDF and email.** | A quote template for the PDF. Each review Task also stores the drafted customer message (Task description, or a `Drafted_Message__c` long-text field), and a **Send question** quick action on the Task calls the service. The service sends the customer email through the standard `emailSimple` action (`/services/data/vXX.X/actions/standard/emailSimple`) from an org-wide address (quotes@perennialsfabrics.com), so every email is logged on the Contact. | M |
 | S8 | **Integration user and access.** | A Salesforce Integration user licence, an External Client App (OAuth 2.0 JWT bearer) and a permission set: CRUD on Lead, Contact, Account, Opportunity, Quote, QuoteLineItem, Task; Apex class access for S2. | S |
 
 ---
@@ -188,10 +188,10 @@ The order's `customer_note` is the order note. Billing name, company and email g
 
 | # | Change | Size |
 |---|---|---|
-| E1 | Set up quotes@ as a Google Group or shared mailbox; grant the service account delegated access (§5.4). | S |
+| E1 | Set up quotes@perennialsfabrics.com as a Google Group or shared mailbox; grant the service account delegated access (§5.4). | S |
 | E2 | Create a Pub/Sub topic `s2q-gmail`, give `gmail-api-push@system.gserviceaccount.com` publish rights, and add a push subscription to `/webhooks/gmail`. | S |
-| E3 | Call `users.watch` on quotes@ with the INBOX label; renew it daily (§5.1). | S |
-| E4 | Send replies through Salesforce from the org-wide quotes@ address, so threads stay in one place and are logged on the Contact. | S (with S7) |
+| E3 | Call `users.watch` on quotes@perennialsfabrics.com with the INBOX label; renew it daily (§5.1). | S |
+| E4 | Send replies through Salesforce from the org-wide quotes@perennialsfabrics.com address, so threads stay in one place and are logged on the Contact. | S (with S7) |
 
 ---
 
@@ -231,4 +231,4 @@ The order's `customer_note` is the order note. Billing name, company and email g
 | 6 | What dollar amount needs manager approval? | $20,000 (S5) |
 | 7 | Are pricing rules really additive (15% + 5%) rather than compounding? | Additive (README assumption 1) |
 | 8 | Who owns the review queue: the account owner, or a shared inside-sales queue? | The shared queue, then the account owner (S4/S5) |
-| 9 | Is Google Workspace the email platform for quotes@? | Yes (§6) |
+| 9 | Is Google Workspace the email platform for quotes@perennialsfabrics.com? | Yes (§6) |

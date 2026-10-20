@@ -16,7 +16,7 @@ The app starts **seeded**: the 27 workbook requests (21 original + 6 edge cases 
 | Page | What it is |
 |---|---|
 | 🛍 **Website** | Storefront modelled on the real site's flow: colorway, Add Sample + Project Type, Request A Quote (Length in yards / feet / meters, Date Needed, CFA, Project Name), cart, guest checkout |
-| ☁️ **CRM** | Salesforce-style: quotes@ inbox, leads, accounts, opportunity record pages, the rep's task queue with drafted messages |
+| ☁️ **CRM** | Salesforce-style: quotes@perennialsfabrics.com inbox, leads, accounts, opportunity record pages, the rep's task queue with drafted messages |
 | 🏭 **ERP** | NetSuite-style: inventory by dye lot, sales orders (samples, holds, CFA cuttings), customers |
 | ⚖️ **Old vs New** | One customer's journey: each automated step next to the manual step it replaces |
 | 🛠 **Ops console** | Each request's full story, the review queue, the integration log |
@@ -24,7 +24,7 @@ The app starts **seeded**: the 27 workbook requests (21 original + 6 edge cases 
 | File | What it is |
 |---|---|
 | `app.py`, `ui/` | Streamlit pages and shared session state |
-| `site.py` | What the website checkout and the quotes@ inbox send into the workflow |
+| `site.py` | What the website checkout and the quotes@perennialsfabrics.com inbox send into the workflow |
 | `baseline.py` | Today's manual steps per automated action (illustrative estimates) |
 | `data/` | The workbook (original + 6 added rows, marked in its Notes column) and the web carts |
 
@@ -42,7 +42,7 @@ The app starts **seeded**: the 27 workbook requests (21 original + 6 edge cases 
 | 1 | **Website** → Tidal Herringbone → **Hospitality** → Add Sample → Cart → Checkout (Dana pre-filled) → **Place order** | Like the real site, the customer picks an exact colorway, so there's nothing to interpret. |
 | 2 | Thank-you page | Matched to her existing contact, qualified from her trade account, sample order created in NetSuite on her existing opportunity, and nobody retyped anything. |
 | 3 | **See it in the CRM** → **Opportunities** (opens on Ruiz Interiors) | One opportunity, with the new sample next to her earlier ones and her quotes. |
-| 4 | **Inbox (quotes@)** → *Dana: 30 yds of the herringbone* → **Send to quotes@** | While Claude reads it (about 10 seconds): email is where AI earns its place, reading free text into SKU and quantity, checked against the catalog and cross-checked by rules. Pricing and stock are plain code. Then: priced, held and sent, with no one involved. |
+| 4 | **Inbox (quotes@perennialsfabrics.com)** → *Dana: 30 yds of the herringbone* → **Send to quotes@perennialsfabrics.com** | While Claude reads it (about 10 seconds): email is where AI earns its place, reading free text into SKU and quantity, checked against the catalog and cross-checked by rules. Pricing and stock are plain code. Then: priced, held and sent, with no one involved. |
 | 5 | **ERP** → Inventory: lot L-2403 shows 30 yd reserved | NetSuite holds the fabric from one dye lot for 14 days. |
 | 6 | **CRM → Tasks**: open EML-023's drafted message, then EML-026 | When the system isn't sure, it drafts one message for the rep to send in one click. EML-026 is one of two bugs our added test rows caught. |
 | 7 | **Old vs New** → Ruiz Interiors | About 49 manual steps, 115 retyped values and 12 emails today, against 2 rep approvals (labelled estimates). |

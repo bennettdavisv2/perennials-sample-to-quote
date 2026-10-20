@@ -46,9 +46,9 @@ CREATE TABLE reviews (
 );
 CREATE INDEX ON reviews (status, created_at);         -- review-queue age alarm
 
--- Gmail watch state for quotes@.
+-- Gmail watch state for quotes@perennialsfabrics.com.
 CREATE TABLE gmail_state (
-    mailbox          text PRIMARY KEY,                -- quotes@...
+    mailbox          text PRIMARY KEY,                -- quotes@perennialsfabrics.com
     history_id       bigint NOT NULL,
     watch_expires_at timestamptz NOT NULL
 );

@@ -56,7 +56,7 @@ class Workflow:
             self.process_next()
 
     def submit(self, req: dict) -> dict:
-        """A live request (demo storefront checkout or the quotes@ inbox) joins the inbox and runs now."""
+        """A live request (demo storefront checkout or the quotes@perennialsfabrics.com inbox) joins the inbox and runs now."""
         self.inbox.append(req)
         return self.process(req)
 
@@ -468,7 +468,7 @@ class Workflow:
 
     def _email_question(self, rv, res, by):
         self.log.record("CRM", "Email question", f"'{rv['message']['subject']}' to {res['request']['email']} ({rv['id']})",
-                        "Salesforce: emailSimple action from quotes@, logged on the Contact")
+                        "Salesforce: emailSimple action from quotes@perennialsfabrics.com, logged on the Contact")
         rv["asked"] = True
         if rv["action"] in ("send_question", "none"):
             rv["status"] = f"Question sent by {by}: waiting on customer"

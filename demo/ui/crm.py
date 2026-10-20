@@ -1,4 +1,4 @@
-"""Salesforce-style CRM mock: home, the shared quotes@ inbox, leads, accounts, opportunity
+"""Salesforce-style CRM mock: home, the shared quotes@perennialsfabrics.com inbox, leads, accounts, opportunity
 record pages, and the review task queue."""
 from __future__ import annotations
 
@@ -9,6 +9,10 @@ from demo import baseline, site
 from .common import (acct_name, link, md, money, open_reviews, order_lines, reasons, review_buttons, review_message,
                      system_header, table, wf)
 from .ops import quote_lines
+
+# Shown in labels as plain text. Streamlit auto-links a bare email address in labels, so clicking the tab would
+# open the mail client instead of switching tabs. A zero-width space after the @ stops the auto-link.
+INBOX = "quotes@\u200bperennialsfabrics.com"
 
 # Ready-made emails for the demo: a clean one, a tricky one, and replays of the workbook's emails.
 PRESETS = {
@@ -25,7 +29,7 @@ PRESETS = {
 
 
 def inbox(w):
-    st.markdown("#### quotes@ shared inbox")
+    st.markdown(f"#### {INBOX} shared inbox")
     st.caption("Emails to the shared quote inbox are forwarded here (Gmail / Graph API push), read by Claude or the "
                "rules, and turned into a Quote on the right Opportunity. No one retypes them.")
     with st.container(border=True):
@@ -43,7 +47,7 @@ def inbox(w):
             company = b.text_input("Company", value=company0)
             email = c.text_input("From email", value=email0)
             msg = st.text_area("Message", value=msg0, height=90)
-            if st.form_submit_button("Send to quotes@", type="primary"):
+            if st.form_submit_button(f"Send to {INBOX}", type="primary"):
                 if "@" not in email or not msg.strip():
                     st.error("A sender email and a message are required.")
                 else:
@@ -120,7 +124,7 @@ def tasks(w):
 def render():
     w = wf()
     system_header("crm", "CRM", "Salesforce-style mock · people, opportunities, quotes, tasks")
-    t = st.tabs(["Home", "Inbox (quotes@)", "Leads", "Accounts & contacts", "Opportunities",
+    t = st.tabs(["Home", f"Inbox ({INBOX})", "Leads", "Accounts & contacts", "Opportunities",
                  f"Tasks ({len(open_reviews(w))})"])
     with t[0]:
         m = st.columns(4)
