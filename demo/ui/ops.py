@@ -9,20 +9,22 @@ from s2q.workflow import STAGES
 from .common import md, money, open_reviews, reasons, review_buttons, review_message, table, wf
 
 SYSTEMS = {1: "Website → CRM", 2: "CRM", 3: "ERP + CRM", 4: "Website / email → CRM", 5: "ERP → CRM", 6: "ERP"}
-STAGE_STATUS = {"done": "✅ Done", "review": "🟡 Needs review", "blocked": "⛔ Blocked", "skipped": "➖ Skipped",
-                "waiting": "⏳ Waiting", "n/a": "· Not applicable"}
-DECISION = {"qualified": "✅ Qualified trade customer", "disqualified": "⛔ Disqualified", "spam": "⛔ Spam", "review": "🟡 New sender: a rep qualifies"}
+STAGE_STATUS = {"done": "Done", "review": "Needs review", "blocked": "Blocked", "skipped": "Skipped",
+                "waiting": "Waiting", "n/a": "Not applicable"}
+DECISION = {"qualified": "Qualified trade customer", "disqualified": "Disqualified", "spam": "Spam",
+            "review": "A rep qualifies"}
+STOPPED = ("Spam", "Disqualified", "Blocked", "Quote rejected", "Sample request rejected", "Dismissed")
 
 
 def short_status(w, rid: str) -> str:
     res = w.results.get(rid)
     if not res:
-        return "⚪ In inbox"
+        return "In inbox"
     if open_reviews(w, rid):
-        return "🟡 Needs review"
-    if res["outcome"].startswith(("Spam", "Disqualified", "Blocked", "Quote rejected")):
-        return "⛔ Stopped"
-    return "✅ Done"
+        return "Needs review"
+    if res["outcome"].startswith(STOPPED):
+        return "Stopped"
+    return "Done"
 
 
 def render_detail(w, rid: str):
@@ -58,7 +60,7 @@ def render_detail(w, rid: str):
     if not res:
         return
     ext, s = res["extraction"], short_status(w, rid)
-    banner = {"✅": st.success, "🟡": st.warning, "⛔": st.error, "⚪": st.info}[s[0]]
+    banner = {"Done": st.success, "Needs review": st.warning, "Stopped": st.error, "In inbox": st.info}[s]
     banner(md(f"**Result:** {res['outcome']}"))
 
     st.markdown("##### What happened")
@@ -144,7 +146,7 @@ def render_detail(w, rid: str):
     with st.expander("Raw data (structured request JSON)"):
         st.caption(f"Read by: {ext['method']}")
         for n in res["extract_notes"]:
-            st.caption(md(f"⚠ {n}"))
+            st.caption(md(f"Note: {n}"))
         st.json(ext, expanded=False)
 
 

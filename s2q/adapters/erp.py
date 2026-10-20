@@ -115,6 +115,19 @@ class MockERP:
         self.log.record("ERP", "Release reservation", f"{so_id}: {reason}",
                         "NetSuite REST: PATCH /record/v1/salesOrder/{id} (close lines)")
 
+    def reinstate_reservation(self, so_id: str, reason: str):
+        """Put a released hold back (the revision that released it fell through). No-op if it's still held."""
+        so = next(s for s in self.sales_orders if s["id"] == so_id)
+        if not so["status"].startswith("Released"):
+            return
+        for ln in so["lines"]:
+            for a in ln["allocation"]:
+                lot = next(l for l in self.lots if l["sku"] == ln["sku"] and l["lot"] == a["lot"])
+                lot["reserved"] += a["yards"]
+        so["status"] = "Pending Approval (hold)"
+        self.log.record("ERP", "Reinstate reservation", f"{so_id}: {reason}",
+                        "NetSuite REST: PATCH /record/v1/salesOrder/{id} (reopen lines)")
+
     def create_cfa_order(self, customer_id: str, quote_id: str, alloc_plan: list[dict], ship_to: str,
                          now: datetime) -> dict:
         """CFA (cutting for approval): a small cutting from each lot being held, so the customer

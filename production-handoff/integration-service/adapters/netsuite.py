@@ -68,6 +68,10 @@ class NetSuiteERP:
         """(a) PATCH salesOrder lines isClosed = true, or (b) transfer back. Idempotent: no-op if already released."""
         raise NotImplementedError
 
+    def reinstate_reservation(self, so_id, reason):
+        """Re-open the hold's lines (or transfer back to HOLD) when a revision that released it fell through."""
+        raise NotImplementedError
+
     def create_cfa_order(self, customer_id, quote_id, alloc_plan, ship_to, now):
         """POST salesOrder  customform = S2Q CFA, $0, one cutting per held lot (inventoryDetail = that lot)."""
         raise NotImplementedError

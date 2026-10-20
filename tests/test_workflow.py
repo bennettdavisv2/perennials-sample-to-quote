@@ -145,8 +145,7 @@ def test_llm_output_is_validated_against_catalog(monkeypatch):
                 "segment_hint": "trade", "trade_subtype": "Upholsterer", "signals": [], "project": "",
                 "items": [{"reference": "green velvet", "skus": ["PF-1004", "PF-9999"], "quantity": 12,
                            "unit": "m", "ambiguous": False, "inferred": False}],
-                "wildcard": False, "need_by": None, "urgent": False, "budgetary": False, "revision": False,
-                "wants_hold": False, "asks_price_list": False}))])
+                "wildcard": False, "need_by": None, "urgent": False, "budgetary": False, "revision": False}))])
 
     w.extractor.llm.client = NS(beta=NS(messages=FakeMessages()))
     res = w.process(next(r for r in w.inbox if r["id"] == "EML-015"))
@@ -347,3 +346,51 @@ def test_existing_non_trade_account_goes_to_a_rep_even_with_a_contact():
                      "message": "Could I get 5 yds of the herringbone?"})
     assert res["outcome"] == "Needs review: qualification" and "quote_id" not in res
     assert "isn't a trade account" in res["qualification"]["reasons"][0]
+
+
+# ---------- audit fixes ----------
+def test_unpriceable_revision_keeps_the_old_quotes_hold():
+    w = seed(Workflow(mode="rules"))
+    old = next(q for q in w.crm.quotes if q["id"] == "Q-0101-v2")
+    hold = next(s for s in w.erp.sales_orders if s["id"] == old["reservation_id"])
+    stripe_before = {l["lot"]: l["reserved"] for l in w.erp.lots if l["sku"] == "PF-1001"}
+    base = next(r for r in w.inbox if r["id"] == "EML-021")
+    res = w.process({**base, "id": "EML-T7", "message": "Update: actually make the stripe the linen instead."})
+    assert res["outcome"] == "Needs review: nothing priceable"
+    assert old["status"] == "Pending rep review" and hold["status"].startswith("Pending Approval")   # hold put back
+    assert {l["lot"]: l["reserved"] for l in w.erp.lots if l["sku"] == "PF-1001"} == stripe_before
+
+
+def test_second_address_while_first_lead_waits_is_the_same_person():
+    """Before a rep decides, Dana's second address must join her open lead, and one Qualify releases both."""
+    w = Workflow(mode="rules")
+    for rid in ("WEB-001", "WEB-003"):
+        w.process(next(r for r in w.inbox if r["id"] == rid))
+    ruiz = [l for l in w.crm.leads if l["email"].endswith("@ruizinteriors.example")]
+    assert len(ruiz) == 1 and w.results["WEB-003"]["identity"]["match"].startswith("Same person")
+    w.approve(next(r for r in w.reviews if r["request"] == "WEB-001")["id"])
+    assert w.results["WEB-001"]["outcome"].startswith("Samples sent")
+    assert w.results["WEB-003"]["outcome"].startswith("Samples sent")               # followed the same decision
+    contact = next(c for c in w.crm.contacts if c["email"] == "dana@ruizinteriors.example")
+    assert "d.ruiz@ruizinteriors.example" in contact["alt_emails"]
+
+
+def test_rejecting_any_review_sets_a_clear_outcome():
+    w = seed(Workflow(mode="rules"))
+    cap = next(r for r in w.reviews if r["request"] == "WEB-013" and r["action"] == "place_samples_capped")
+    w.reject(cap["id"])
+    assert w.results["WEB-013"]["outcome"] == "Sample request rejected by rep"
+    q = next(r for r in w.reviews if r["request"] == "EML-024" and r["action"] == "send_question")
+    w.reject(q["id"])
+    assert w.results["EML-024"]["outcome"] == "Dismissed by rep"
+
+
+def test_manager_approval_threshold_comes_from_config():
+    w = Workflow(mode="rules")
+    w.cfg.manager_approval_over = 1_000
+    res = w.process(next(r for r in w.inbox if r["id"] == "EML-017"))   # $226 quote: under any threshold
+    assert res["outcome"].endswith("sent")
+    w2 = Workflow(mode="rules")
+    w2.cfg.manager_approval_over = 100
+    res2 = w2.process(next(r for r in w2.inbox if r["id"] == "EML-017"))
+    assert any("manager approval" in f for f in res2["flags"])

@@ -26,7 +26,6 @@ from .pricing import to_yards
 
 STAGES = {1: "Sample request", 2: "Lead qualification", 3: "Sample order + Opportunity",
           4: "Quote request", 5: "Price quote", 6: "Inventory reservation"}
-HIGH_VALUE = 20_000  # quotes above this need a manager's eye
 
 
 class Workflow:
@@ -50,10 +49,16 @@ class Workflow:
         p = self.pending()
         return self.process(p[0]) if p else None
 
-    def process_all(self):
+    def process_all(self, decisions: dict | None = None):
+        """Process every pending request in time order. `decisions` (request id -> "qualify" | "reject")
+        replays a rep's qualification decisions right after each request, as they happened."""
         self.extractor.prefetch(self.pending())  # LLM reads emails in parallel; workflow still runs in order
         while self.pending():
-            self.process_next()
+            res = self.process_next()
+            choice = (decisions or {}).get(res["request"]["id"])
+            for rv in [r for r in self.reviews if r["request"] == res["request"]["id"] and r["status"] == "Open"
+                       and r["action"].startswith("qualify_")] if choice else []:
+                (self.approve if choice == "qualify" else self.reject)(rv["id"], by="rep (recorded)")
 
     def submit(self, req: dict) -> dict:
         """A live request (demo storefront checkout or the quotes@perennialsfabrics.com inbox) joins the inbox and runs now."""
@@ -96,9 +101,6 @@ class Workflow:
     def _sampled_skus(self, erp_customer: str) -> set[str]:
         return {l["sku"] for so in self.erp.sales_orders if so["type"] == "Sample" and so["customer"] == erp_customer
                 for l in so["lines"]}
-
-    def _items_desc(self, ext: dict) -> list[str]:
-        return [self._sku_desc(s) for it in ext["items"] for s in it["skus"] if self.erp.get_item(s)]
 
     def _sku_desc(self, sku):
         it = self.erp.get_item(sku)
@@ -352,12 +354,14 @@ class Workflow:
                     alloc_plan.append({"sku": sku, "allocation": got})
 
         total = round(sum(l["line_total"] for l in lines), 2)
-        if total > HIGH_VALUE:
-            flags.append(f"High-value quote (${total:,.0f} > ${HIGH_VALUE:,}): manager approval")
+        if total > self.cfg.manager_approval_over:
+            flags.append(f"High-value quote (${total:,.0f} > ${self.cfg.manager_approval_over:,.0f}): manager approval")
         if ext.get("need_by"):
             flags.append(f"Customer needs delivery {ext['need_by']}: confirm ship date")
         cust_notes += questions
         if not lines:
+            if revision_of and revision_of.get("reservation_id"):  # the old quote stands, so its hold does too
+                self.erp.reinstate_reservation(revision_of["reservation_id"], "revision couldn't be priced; old quote stands")
             self._stage(res, 5, "review", "Nothing could be priced: " + "; ".join(flags))
             self._stage(res, 6, "n/a", "")
             if questions:
@@ -452,7 +456,15 @@ class Workflow:
             res["outcome"] = f"Quote {quote['id']} sent after review"
         elif rv["action"] == "send_question":
             self._email_question(rv, res, by)
+        if rv["action"].startswith("qualify_"):
+            self._same_person(rv, by, approve=True)
         return rv
+
+    def _same_person(self, rv, by, approve):
+        """One person, one decision: other requests waiting on the same lead's qualification follow it."""
+        for other in [r for r in self.reviews if r is not rv and r["status"] == "Open"
+                      and r["action"].startswith("qualify_") and r["payload"].get("lead_id") == rv["payload"]["lead_id"]]:
+            (self.approve if approve else self.reject)(other["id"], by=f"{by} (same customer)")
 
     def ask(self, review_id: str, by: str = "rep"):
         """Send the review's drafted question to the customer. For a sample-limit review the review stays open
@@ -491,6 +503,14 @@ class Workflow:
             res["outcome"] = "Quote rejected by rep (rework manually)"
         elif rv["action"] in ("qualify_and_sample", "qualify_and_quote"):
             lead = next(l for l in self.crm.leads if l["id"] == rv["payload"]["lead_id"])
-            self.crm.set_lead_status(lead, "Disqualified", f"rejected by {by}")
+            if lead["status"] != "Disqualified":
+                self.crm.set_lead_status(lead, "Disqualified", f"rejected by {by}")
             res["outcome"] = "Disqualified by rep"
+            self._same_person(rv, by, approve=False)
+        elif rv["action"] == "place_samples_capped":
+            self._stage(res, 3, "skipped", f"Sample request rejected by {by}")
+            res["outcome"] = "Sample request rejected by rep"
+        else:  # send_question / none: the rep closed it without asking the customer
+            self._stage(res, 5, "skipped", f"Dismissed by {by}")
+            res["outcome"] = "Dismissed by rep"
         return rv

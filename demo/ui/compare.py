@@ -58,8 +58,8 @@ def render():
             with b:
                 st.markdown(f"**New: {len(auto)} automated, {len(human)} by a person**")
                 for e in auto:
-                    st.markdown(md(f"- ⚙️ **{e['system']}** {e['action']}: {e['detail']}"))
+                    st.markdown(md(f"- **{e['system']}** {e['action']}: {e['detail']}"))
                 for r in [r for r in w.reviews if r["request"] == rid]:
-                    st.markdown(md(f"- 🧑 **Sales rep** reviews {r['id']} ({r['stage']}): {r['status']}"))
+                    st.markdown(md(f"- **Sales rep** reviews {r['id']} ({r['stage']}): {r['status']}"))
                 if res["email"]:
-                    st.markdown(md(f"- ✉️ Customer email drafted: *{res['email']['subject']}*"))
+                    st.markdown(md(f"- Customer email drafted: *{res['email']['subject']}*"))

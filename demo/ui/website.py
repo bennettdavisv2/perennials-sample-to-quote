@@ -160,11 +160,11 @@ def thanks():
                     st.code(res["email"]["body"], language=None, wrap_lines=True)
     c1, c2, c3 = st.columns(3)
     with c1:
-        link("crm", "See it in the CRM", "☁️")
+        link("crm", "See it in the CRM", ":material/contacts:")
     with c2:
-        link("erp", "See it in the ERP", "🏭")
+        link("erp", "See it in the ERP", ":material/inventory_2:")
     with c3:
-        link("compare", "Compare with today's process", "⚖️")
+        link("compare", "Compare with today's process", ":material/compare_arrows:")
     if st.button("Continue shopping"):
         go("grid")
 

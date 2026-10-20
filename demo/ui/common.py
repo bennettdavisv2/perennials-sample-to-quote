@@ -101,7 +101,7 @@ def review_message(rv: dict):
     if not rv.get("message"):
         return
     label = "Quote email that Approve sends" if rv["action"] == "send_quote" else "Drafted message to the customer"
-    with st.expander(f"✉️ {label}: {rv['message']['subject']}" + (" · sent" if rv["asked"] else "")):
+    with st.expander(f"{label}: {rv['message']['subject']}" + (" · sent" if rv["asked"] else "")):
         st.code(rv["message"]["body"], language=None, wrap_lines=True)
 
 
@@ -128,7 +128,7 @@ def review_buttons(w, rv: dict, where: str):
         w.approve(rv["id"])
         st.rerun()
     if rv.get("message") and rv["action"] != "send_quote":
-        if st.button("Question sent ✓" if rv["asked"] else "Send question", key=f"q-{key}", width="stretch",
+        if st.button("Question sent" if rv["asked"] else "Send question", key=f"q-{key}", width="stretch",
                      disabled=rv["asked"], help="Email the drafted message; the review stays open for their reply"):
             w.ask(rv["id"])
             st.rerun()

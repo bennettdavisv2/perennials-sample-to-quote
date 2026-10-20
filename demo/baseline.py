@@ -57,6 +57,8 @@ MANUAL: dict[tuple[str, str], Step | None] = {
                                                     "enters a pending order", 6, fields=5, emails=1, waits=1),
     ("ERP", "Release reservation"): Step("Order ops", "Rep emails ops to release the old hold (often forgotten)",
                                          3, fields=1, emails=1),
+    ("ERP", "Reinstate reservation"): Step("Order ops", "Re-places a hold that was released for a revision that fell through",
+                                           3, fields=1, emails=1),
     ("ERP", "Create CFA order"): Step("Order ops", "Rep asks the warehouse to cut a CFA from the held lot", 4,
                                       fields=3, emails=1, waits=1),
     ("Human", "Approve"): None,  # a decision a person makes in both worlds (counted on the new side)

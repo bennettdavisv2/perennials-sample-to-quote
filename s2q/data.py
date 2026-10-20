@@ -34,6 +34,7 @@ class PricingConfig:
     max_samples: int = 10
     quote_valid_days: int = 30
     hold_days: int = 14
+    manager_approval_over: float = 20_000  # quotes above this go to a manager; overridable by a Pricing Rules row
 
 
 def _pct(s) -> float:
@@ -86,6 +87,8 @@ def load_workbook(path: str | Path = DEFAULT_DATA) -> dict:
             cfg.quote_valid_days = int(_num(val))
         elif rule.startswith("reservation hold"):
             cfg.hold_days = int(_num(val))
+        elif rule.startswith("manager approval"):
+            cfg.manager_approval_over = _num(val)
     if tiers:
         cfg.volume_tiers = tuple(sorted(tiers, reverse=True))
 

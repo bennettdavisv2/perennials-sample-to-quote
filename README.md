@@ -33,7 +33,7 @@ pip install -r requirements.txt
 
 streamlit run demo/app.py     # demo at http://localhost:8501/
 python -m s2q.cli -v          # or headless: every workbook request, stage by stage, with email drafts
-pytest -q                     # 44 tests
+pytest -q                     # 48 tests
 ```
 
 **Optional: use Claude for email extraction.** Run `export ANTHROPIC_API_KEY=sk-...` before starting. If the key is in a `.env` one folder up, load it with `set -a; source ../.env; set +a`. Set `S2Q_MODEL` to override the model (default `claude-opus-5-5`, low effort). Without a key, the deterministic rules extractor is used and everything works the same. With a key, Claude reads each email and the rules run as a cross-check; if they disagree, the request goes to review. Website carts are structured, so they never go to the LLM.
@@ -51,24 +51,24 @@ The 21 requests Bertram provided all pass, but they don't exercise several cases
 | EML-025 | Discontinued fabric: only the 22 yd that remain are quoted |
 | EML-026 | A quote from a sender still waiting to be qualified: it waits for the rep |
 
-Two of these exposed real bugs, both fixed: an ambiguous color could replace an open quote and release its hold, and Claude's reading of a sender could skip an open review.
+Two of these exposed real bugs, both fixed: an ambiguous color could replace an open quote and release its hold, and Claude's reading of a sender could skip an open review. A later code audit fixed three more: a revision that couldn't be priced released the old quote's hold, a second email address opened a second lead while the first was waiting for a rep, and some rejections left a request showing "needs review".
 
-**What the 44 tests cover:** the pricing math (trade and volume discounts, cut fee, meters and feet); the outcome of all 27 rows end to end; dedupe, spam, revisions, holds and backorders; color resolution and the drafted customer messages; manual qualification (qualify, reject, qualify-then-quote, Do Not Sell); website carts and Claude's output validation and fallback; the demo's entry points and old-vs-new numbers; and that the production adapters match the mocks' interface.
+**What the 48 tests cover:** the pricing math (trade and volume discounts, cut fee, meters and feet); the outcome of all 27 rows end to end; dedupe, spam, revisions, holds and backorders; color resolution and the drafted customer messages; manual qualification (qualify, reject, qualify-then-quote, Do Not Sell); website carts and Claude's output validation and fallback; the demo's entry points and old-vs-new numbers; and that the production adapters match the mocks' interface.
 
 ## Assumptions
 
 Ambiguities in the brief and data, and the call I made on each:
 
 1. **Volume tiers are trade-only and additive.** "On top of trade discount" means 15% + 5% = 20% off list, not compounded (19.25%). Non-trade pricing (list price) stays in the pricing function, but the workflow only prices for qualified trade customers.
-2. **Cut fee** is $25 per line under 5 yd, for everyone.
+2. **Cut fee** is $25 per line under 5 yd.
 3. **Meters and feet are converted to yards and rounded up to the nearest 1/4 yd** (12 m becomes 13.25 yd; 10 ft becomes 3.5 yd). The site's quote form offers Yards / Feet / Meters.
 4. **Samples are memo swatches stocked separately from bolt yardage.** Out-of-stock or backordered fabrics can still be sampled (the email notes the yardage status). Discontinued fabrics cannot.
 5. **Free samples and trade pricing are for qualified trade only.** Anyone who isn't trade (a homeowner, a student, an existing non-trade account) goes to a rep, who can reject them; non-trade buyers are then handled outside this system.
 6. **Qualification is manual for new senders.** Anyone without a CRM account waits for a rep's **Qualify** or **Reject**, with no suggestion from the system: what a sender says about themselves never qualifies them. Spam, existing trade accounts, existing consumer accounts and Do Not Sell are still handled automatically. The demo's seeded history includes the rep's decisions (`demo/data/seed_decisions.json`); Hannah Kim's are left open to show the step live.
 7. **Do Not Sell** accounts are disqualified: no samples, no price list, and the account owner is notified.
-8. **Spam never reaches the CRM.**
-9. For existing contacts, a lead is still created (for source attribution) and **converted into the existing contact**, as Salesforce lead convert does.
-10. **Same email domain + same name means the same person.** The new address is added as an alternate email.
+8. **Spam never reaches the CRM.** (The diagram groups it with Do Not Sell under *Closed* to keep it simple.)
+9. For an existing contact, a **sample request** still creates a lead (for source attribution) and **converts it into the existing contact**, as Salesforce lead convert does. A **quote request** from an existing contact goes straight to their opportunity.
+10. **Same email domain + same name means the same person,** including someone whose first lead is still waiting for a rep. The new address is added as an alternate email, and one Qualify or Reject decides all of that person's waiting requests.
 11. **One open opportunity per account is reused** for follow-ups. In production this would match on project (see design note).
 12. **A follow-up that says "update" or touches the same SKUs revises the open quote** (v1 to v2). The old hold is released before re-checking availability.
 13. **Inventory is held at quote time, even while the quote waits for review.** Holds carry a 14-day expiry and are cheap to release (the PoC records the expiry; the release job is in the engineering handoff). The customer's accept / decline step is out of scope. Budgetary quotes and out-of-stock/backordered lines are not held.

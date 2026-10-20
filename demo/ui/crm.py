@@ -95,7 +95,7 @@ def opportunity(w):
         with st.expander(f"{q['id']} lines" + (f" · {len(q['flags'])} flag(s)" if q["flags"] else "")):
             quote_lines(q)
             for fl in q["flags"]:
-                st.caption(md(f"⚠ {fl}"))
+                st.caption(md(f"Flag: {fl}"))
     rids = baseline.journeys(w).get(o["account_id"], [])
     st.markdown("**Activity** (every request on this account)")
     table([w.results[r] for r in rids], {"Request": lambda r: r["request"]["id"], "Type": lambda r: r["request"]["type"],
@@ -135,7 +135,7 @@ def render():
         st.markdown("**Recent activity** (written by the integration, not typed by a person)")
         table(list(reversed([e for e in w.log.events if e["system"] == "CRM"]))[:12],
               {"Time": "sim_time", "Request": "request", "Action": "action", "Detail": "detail"})
-        link("website", "Place a new order on the website", "🛍")
+        link("website", "Place a new order on the website", ":material/storefront:")
     with t[1]:
         inbox(w)
     with t[2]:

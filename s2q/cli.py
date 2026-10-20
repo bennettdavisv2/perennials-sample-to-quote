@@ -9,6 +9,8 @@
 from __future__ import annotations
 
 import argparse
+import json
+from pathlib import Path
 
 from .workflow import Workflow
 
@@ -21,18 +23,18 @@ def main():
     ap.add_argument("--approve-all", action="store_true")
     ap.add_argument("--verbose", "-v", action="store_true")
     ap.add_argument("--data")
-    ap.add_argument("--no-decisions", action="store_true",
-                    help="skip demo/data/seed_decisions.json (new senders then wait for a rep)")
+    ap.add_argument("--decisions", default=str(Path(__file__).resolve().parents[1] / "demo" / "data" / "seed_decisions.json"),
+                    help="JSON of recorded qualification decisions to replay (request id -> qualify / reject)")
+    ap.add_argument("--no-decisions", action="store_true", help="don't replay decisions (new senders wait for a rep)")
     a = ap.parse_args()
 
     wf = Workflow(a.data, mode="rules" if a.rules else "auto") if a.data else Workflow(mode="rules" if a.rules else "auto")
     print(f"Extractor: {wf.extractor.status}\n")
-    if a.no_decisions:
-        wf.process_all()
-    else:
+    decisions = None
+    if not a.no_decisions and Path(a.decisions).exists():
         # Qualification is manual for new senders; replay the rep's recorded decisions in order.
-        from demo.seed import seed
-        seed(wf)
+        decisions = {k: v for k, v in json.loads(Path(a.decisions).read_text()).items() if not k.startswith("_")}
+    wf.process_all(decisions)
     if a.approve_all:
         for rv in list(wf.reviews):
             if rv["status"] == "Open":

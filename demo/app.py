@@ -20,14 +20,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # repo root, so
 
 from demo.ui import common, compare, crm, erp, ops, website  # noqa: E402
 
-st.set_page_config(page_title="Perennials Sample-to-Quote", page_icon="🧵", layout="wide")
+st.set_page_config(page_title="Perennials Sample-to-Quote", page_icon=":material/texture:", layout="wide")
 
 common.PAGES.update({
-    "website": st.Page(website.render, title="Website", icon="🛍", url_path="website"),
-    "crm": st.Page(crm.render, title="CRM", icon="☁️", url_path="crm"),
-    "erp": st.Page(erp.render, title="ERP", icon="🏭", url_path="erp"),
-    "compare": st.Page(compare.render, title="Old vs New", icon="⚖️", url_path="compare"),
-    "ops": st.Page(ops.render, title="Ops console", icon="🛠", url_path="ops"),
+    "website": st.Page(website.render, title="Website", icon=":material/storefront:", url_path="website"),
+    "crm": st.Page(crm.render, title="CRM", icon=":material/contacts:", url_path="crm"),
+    "erp": st.Page(erp.render, title="ERP", icon=":material/inventory_2:", url_path="erp"),
+    "compare": st.Page(compare.render, title="Old vs New", icon=":material/compare_arrows:", url_path="compare"),
+    "ops": st.Page(ops.render, title="Ops console", icon=":material/build:", url_path="ops"),
 })
 nav = st.navigation({"Systems": [common.PAGES[k] for k in ("website", "crm", "erp")],
                      "Story": [common.PAGES["compare"], common.PAGES["ops"]]})
@@ -43,7 +43,7 @@ with st.sidebar:
             "touching it.\n"
             "5. **ERP → Inventory**: herringbone lot L-2403 now shows 30 yd reserved.\n"
             "6. **Old vs New**: Ruiz Interiors. Every automated step next to the manual one it replaces.\n"
-            "7. **CRM → Tasks**: Hannah (EML-026) is a new sender. Click **Qualify** and her quote is priced.\n"
+            "7. **CRM → Tasks**: Hannah is a new sender. One **Qualify** ships her samples and sends her quote.\n"
             "8. Try the edge cases: *the canvas* (sample history), *the linen* (one question), a 90 ft quote line "
             "with CFA requested on the website.")
     mode = st.radio("How emails are read", ["auto", "rules"], horizontal=True,

@@ -11,7 +11,7 @@ extractors return the same shape:
 Output shape (dict):
   method, segment_hint (trade|consumer|student|spam|competitor|unclear), trade_subtype,
   signals [str], project, items [{reference, skus, quantity, unit, ambiguous}],
-  wildcard, need_by, urgent, budgetary, revision, wants_hold, asks_price_list
+  wildcard, need_by, urgent, budgetary, revision
 """
 from __future__ import annotations
 
@@ -192,8 +192,6 @@ class RuleExtractor:
             "urgent": bool(re.search(r"\basap\b|urgent|rush", low)),
             "budgetary": "budgetary" in low or "ballpark" in low,
             "revision": bool(re.search(r"\bupdate\b|make that|change (it|that) to|instead of", low)),
-            "wants_hold": bool(re.search(r"\bhold\b|reserve", low)),
-            "asks_price_list": "price list" in low,
         }
 
 
@@ -222,11 +220,9 @@ EXTRACTION_SCHEMA = {
         "urgent": {"type": "boolean"},
         "budgetary": {"type": "boolean", "description": "Customer says rough/budgetary pricing is fine."},
         "revision": {"type": "boolean", "description": "Changes a quantity or item from an earlier request."},
-        "wants_hold": {"type": "boolean"},
-        "asks_price_list": {"type": "boolean"},
     },
     "required": ["segment_hint", "trade_subtype", "signals", "project", "items", "wildcard", "need_by",
-                 "urgent", "budgetary", "revision", "wants_hold", "asks_price_list"],
+                 "urgent", "budgetary", "revision"],
 }
 
 
@@ -336,8 +332,6 @@ class CartIntake:
             "urgent": False,
             "budgetary": False,
             "revision": False,
-            "wants_hold": False,
-            "asks_price_list": "price list" in note.lower(),
             "cfa_requested": any(str(ln.get("cfa", "")).lower() == "requested" for ln in lines),
         }
 

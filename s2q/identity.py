@@ -33,6 +33,14 @@ def resolve(crm, req: dict) -> dict:
         return {"match": "Existing open lead (email)", "contact": None, "account": None, "lead": lead,
                 "confidence": "high"}
 
+    if not is_free_email(email) and name:
+        # A lead can wait hours for a rep; a second address from the same person must not open a second lead.
+        for l in crm.leads:
+            if (not l["converted_contact_id"] and l["status"] != "Disqualified" and _n(l["name"]) == _n(name)
+                    and l["email"].split("@")[-1] == domain):
+                return {"match": "Same person, new email address (open lead)", "contact": None, "account": None,
+                        "lead": l, "confidence": "high"}
+
     if not is_free_email(email):
         same_domain = crm.contacts_by_domain(domain)
         for c in same_domain:

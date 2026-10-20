@@ -85,7 +85,7 @@ box("int", 8, "Quote clear?", "decision", w=150)
 box("crm_a", 8, "Rep asks customer", "person", w=130)
 box("erp", 9, "Price + dye lot", "auto", w=130)
 box("erp", 10, "Fabric hold, 14 days", "auto", w=130)
-box("int", 11, "Flags or over $20k?", "decision", w=150)
+box("int", 11, f"Flags or over ${CFG.manager_approval_over / 1000:g}k?", "decision", w=150)
 box("crm_b", 11, "Quote sent", "result", w=130)
 box("crm_a", 12, "Rep reviews", "person", w=130)
 
