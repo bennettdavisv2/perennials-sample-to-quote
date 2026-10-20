@@ -8,6 +8,7 @@ like a seeded one: two front doors (website, email), one pipeline.
 from __future__ import annotations
 
 import re
+import time
 from datetime import timedelta
 
 # Swatch colors for the mock storefront (plain color blocks, no product imagery).
@@ -31,8 +32,17 @@ def _next_id(w, prefix: str) -> str:
 
 
 def _now(w):
-    """Simulated clock: an hour after the latest request, so live submissions follow the seeded history."""
-    return max(r["received"] for r in w.inbox) + timedelta(hours=1)
+    """Simulated clock: an hour after the latest request, so live submissions follow the seeded history
+    (or the clean start's clock, demo.seed.clean)."""
+    return max((r["received"] for r in w.inbox), default=getattr(w, "demo_clock", None)) + timedelta(hours=1)
+
+
+def _run(w, req: dict) -> dict:
+    """Submit one request and time it on the wall clock: how long the customer waits for the answer."""
+    t0 = time.perf_counter()
+    res = w.submit(req)
+    res["elapsed_s"] = time.perf_counter() - t0
+    return res
 
 
 def submit_checkout(w, customer: dict, samples: list[dict], quotes: list[dict], project_name: str = "",
@@ -50,12 +60,12 @@ def submit_checkout(w, customer: dict, samples: list[dict], quotes: list[dict], 
         req = {**base, "id": _next_id(w, "WEB"), "type": "Sample request", "received": _now(w), "message": note,
                "cart": {"skus": [s["sku"] for s in samples], "project_type": samples[0].get("project_type"),
                         "project_name": project_name, "note": note}}
-        results.append(w.submit(req))
+        results.append(_run(w, req))
     if quotes:
         req = {**base, "id": _next_id(w, "WEB"), "type": "Quote request", "received": _now(w), "message": note,
                "cart": {"quote_lines": quotes, "project_type": quotes[0].get("project_type"),
                         "project_name": project_name or quotes[0].get("project_name") or "", "note": note}}
-        results.append(w.submit(req))
+        results.append(_run(w, req))
     return results
 
 
@@ -63,4 +73,4 @@ def submit_email(w, name: str, company: str, email: str, message: str) -> dict:
     """An email to the shared quotes@perennialsfabrics.com inbox (free text, read by Claude or the rules)."""
     req = {"id": _next_id(w, "EML"), "type": "Quote request", "channel": "Email", "received": _now(w),
            "name": name, "company": company or "", "email": email.strip().lower(), "message": message}
-    return w.submit(req)
+    return _run(w, req)

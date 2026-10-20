@@ -2,7 +2,9 @@
 
     streamlit run demo/app.py      (from the repo root)
 
-Pages share one in-memory workflow (seeded with the 27 workbook requests: 21 original + 6 added edge cases):
+Pages share one in-memory workflow. It starts clean (inventory, prices and existing accounts only), or with
+the 27 workbook requests processed when "Start from" is set to the history:
+  Today        the old process by hand: blank Gmail, Salesforce and NetSuite, measured live (own state)
   Website      mock storefront: browse, add samples / quote lines, check out
   CRM          Salesforce-style: quotes@perennialsfabrics.com inbox, leads, opportunities, tasks
   ERP          NetSuite-style: inventory by dye lot, sales orders, customers
@@ -18,7 +20,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # repo root, so `s2q` and `demo` import
 
-from demo.ui import common, compare, crm, erp, ops, website  # noqa: E402
+from demo.ui import common, compare, crm, erp, manual, ops, website  # noqa: E402
 
 st.set_page_config(page_title="Perennials Sample-to-Quote", page_icon=":material/texture:", layout="wide")
 
@@ -26,26 +28,33 @@ common.PAGES.update({
     "website": st.Page(website.render, title="Website", icon=":material/storefront:", url_path="website"),
     "crm": st.Page(crm.render, title="CRM", icon=":material/contacts:", url_path="crm"),
     "erp": st.Page(erp.render, title="ERP", icon=":material/inventory_2:", url_path="erp"),
+    "manual": st.Page(manual.render, title="Today (manual)", icon=":material/edit_note:", url_path="manual"),
     "compare": st.Page(compare.render, title="Old vs New", icon=":material/compare_arrows:", url_path="compare"),
     "ops": st.Page(ops.render, title="Ops console", icon=":material/build:", url_path="ops"),
 })
-nav = st.navigation({"Systems": [common.PAGES[k] for k in ("website", "crm", "erp")],
+nav = st.navigation({"New system": [common.PAGES[k] for k in ("website", "crm", "erp")],
+                     "Today": [common.PAGES["manual"]],
                      "Story": [common.PAGES["compare"], common.PAGES["ops"]]})
 
 with st.sidebar:
-    with st.expander("Demo script", expanded=True):
+    with st.expander("Demo script (new system)", expanded=True):
         st.markdown(
-            "1. **Website**: open *Tidal Herringbone*, Add Sample (Hospitality). Check out as **Dana Ruiz**.\n"
-            "2. **CRM → Opportunities**: Ruiz Interiors. The new sample order is on her existing opportunity "
-            "(no duplicate lead).\n"
-            "3. **ERP → Sales orders**: the sample order, keyed to her CRM account.\n"
-            "4. **CRM → Inbox**: send *Dana: 30 yds of the herringbone*. Quote priced, held, and sent with no one "
-            "touching it.\n"
-            "5. **ERP → Inventory**: herringbone lot L-2403 now shows 30 yd reserved.\n"
-            "6. **Old vs New**: Ruiz Interiors. Every automated step next to the manual one it replaces.\n"
-            "7. **CRM → Tasks**: Hannah is a new sender. One **Qualify** ships her samples and sends her quote.\n"
-            "8. Try the edge cases: *the canvas* (sample history), *the linen* (one question), a 90 ft quote line "
-            "with CFA requested on the website.")
+            "1. **Website**: add samples of *Tidal Herringbone* and *Canvas Solid* White. Check out as "
+            "**Dana Ruiz**, a new customer.\n"
+            "2. **CRM → Tasks**: one **Qualify**. Lead converted, opportunity created, sample order in the ERP, "
+            "confirmation drafted.\n"
+            "3. **Website**: Request A Quote, 30 yd of the herringbone, CFA requested. Priced, held and sent.\n"
+            "4. **CRM → Inbox**: send *Dana: bump the herringbone to 45 yds*. Claude reads it; the quote is "
+            "revised, re-held and sent.\n"
+            "5. **ERP**: lot L-2403 shows 45 yd reserved; sample, hold and CFA orders.\n"
+            "6. **Old vs New**: measured against the **Today (manual)** run.")
+    start = st.radio("Start from", ["clean", "history"], horizontal=True,
+                     format_func={"clean": "Day one", "history": "Workbook history"}.get,
+                     help="Day one: NetSuite inventory and prices and the existing Salesforce accounts, nothing "
+                          "processed. Workbook history: the 27 workbook requests already processed, for Q&A and edge cases.")
+    if start != st.session_state.get("start", "clean"):
+        st.session_state.start = start
+        common.reset()
     mode = st.radio("How emails are read", ["auto", "rules"], horizontal=True,
                     help="auto = Claude reads the email (rules run as a cross-check) when ANTHROPIC_API_KEY is set. "
                          "Website carts are structured, so they are never sent to the LLM.")
@@ -59,6 +68,6 @@ with st.sidebar:
     if st.button("↺ Reset demo", width="stretch"):
         common.reset()
         st.rerun()
-    st.caption("All systems are in-memory mocks seeded from `demo/data/perennials_sample_data.xlsx`.")
+    st.caption("All systems are in-memory mocks loaded from `demo/data/perennials_sample_data.xlsx`.")
 
 nav.run()

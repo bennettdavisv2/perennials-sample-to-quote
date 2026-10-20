@@ -10,7 +10,7 @@ from demo import site
 from .common import link, md, swatch, system_header, wf
 
 PERSONAS = {
-    "Dana Ruiz · existing trade customer": ("Dana Ruiz", "Ruiz Interiors", "dana@ruizinteriors.example", ""),
+    "Dana Ruiz · Ruiz Interiors": ("Dana Ruiz", "Ruiz Interiors", "dana@ruizinteriors.example", ""),
     "Alex Rivera · new designer, business email": ("Alex Rivera", "Rivera Design Studio", "alex@riveradesign.example",
                                                    ""),
     "Chris Lee · homeowner, personal email": ("Chris Lee", "", "chris.lee@gmail.example",
@@ -151,7 +151,8 @@ def thanks():
     for rid in ids:
         res = w.results[rid]
         with st.container(border=True):
-            st.markdown(f"**{rid}** · {res['request']['type']} → **{md(res['outcome'])}**")
+            took = f" · in {res['elapsed_s']:.1f} s" if "elapsed_s" in res else ""
+            st.markdown(f"**{rid}** · {res['request']['type']} → **{md(res['outcome'])}**{took}")
             for n, s in sorted(res["stages"].items()):
                 if s["status"] != "n/a" and s["summary"]:
                     st.caption(md(f"{n}. {s['stage']}: {s['summary']}"))

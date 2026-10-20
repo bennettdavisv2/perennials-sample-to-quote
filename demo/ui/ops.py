@@ -167,7 +167,9 @@ def render():
 
     tab_req, tab_rev, tab_log = st.tabs(["Requests", f"Review queue ({len(open_reviews(w))})", "Integration log"])
     with tab_req:
-        left, right = st.columns([2, 3], gap="large")
+        if not w.inbox:
+            st.info("No requests yet. Place an order on the website or send an email to the quotes inbox.")
+        left, right = st.columns([2, 3], gap="large") if w.inbox else (st.empty(), st.empty())
         with left:
             inbox = sorted(w.inbox, key=lambda r: r["received"], reverse=True)
             tbl = pd.DataFrame([{"ID": r["id"], "Status": short_status(w, r["id"]), "From": r["name"] or r["email"]}
@@ -181,8 +183,8 @@ def render():
             if event.selection.rows:
                 st.session_state.selected = tbl.iloc[event.selection.rows[0]]["ID"]
         with right:
-            rid = st.session_state.get("selected") or inbox[0]["id"]
-            render_detail(w, rid)
+            if inbox:
+                render_detail(w, st.session_state.get("selected") or inbox[0]["id"])
 
     with tab_rev:
         st.caption("Everything the rules weren't sure about lands here, and as a Task in the CRM. "

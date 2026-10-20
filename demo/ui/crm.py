@@ -16,13 +16,17 @@ INBOX = "quotes@\u200bperennialsfabrics.com"
 
 # Ready-made emails for the demo: a clean one, a tricky one, and replays of the workbook's emails.
 PRESETS = {
-    "Dana: 30 yds of the herringbone (clean, auto-sent)":
+    "Dana: bump the herringbone to 45 yds, add 20 yds of the canvas (revises her quote)":
+        ("Dana Ruiz", "Ruiz Interiors", "dana@ruizinteriors.example",
+         "Client signed off on the herringbone. Can you bump it to 45 yds and add 20 yds of the canvas for the "
+         "cushions?"),
+    "Dana: 30 yds of the herringbone (a fresh quote)":
         ("Dana Ruiz", "Ruiz Interiors", "dana@ruizinteriors.example",
          "Client loved the herringbone sample. Can you quote 30 yds of the herringbone and hold it?"),
-    "Priya: 40 yds of 'the canvas' (color settled by her sample history)":
+    "Priya: 40 yds of 'the canvas' (sample history decides the color; without it, one question)":
         ("Priya Natarajan", "Coastal Hospitality Group", "priya@coastalhg.example",
          "Need 40 yds of the canvas for the cabanas please."),
-    "Mara: 10 yds of 'the linen' (real tie: drafts one question)":
+    "Mara: 10 yds of 'the linen' (drafts one question)":
         ("Mara Lowe", "Mara Lowe Design", "mara@maralowedesign.example", "Can I get 10 yds of the linen?"),
     "Write your own": ("", "", "", ""),
 }
@@ -55,7 +59,8 @@ def inbox(w):
                     st.rerun()
     if rid := st.session_state.get("last_email"):
         res = w.results[rid]
-        st.success(md(f"**{rid}** read by **{res['extraction']['method']}** → {res['outcome']}"))
+        took = f" in {res['elapsed_s']:.1f} s" if "elapsed_s" in res else ""
+        st.success(md(f"**{rid}** read by **{res['extraction']['method']}** → {res['outcome']}{took}"))
         if res.get("quote_id"):
             quote_lines(next(q for q in w.crm.quotes if q["id"] == res["quote_id"]))
         if res["email"]:
@@ -69,6 +74,9 @@ def inbox(w):
 
 def opportunity(w):
     opps = sorted(w.crm.opportunities, key=lambda o: o["created"], reverse=True)
+    if not opps:
+        st.caption("No opportunities yet. One is created when a rep qualifies a new customer.")
+        return
     # Open on the opportunity behind the most recent request (e.g. the order just placed on the website).
     latest = baseline.account_of(w, max(w.inbox, key=lambda r: r["received"])["id"])
     default = next((i for i, o in enumerate(opps) if o["account_id"] == latest), 0)

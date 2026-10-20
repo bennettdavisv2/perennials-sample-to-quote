@@ -2,8 +2,9 @@
 
 One Workflow lives in the Streamlit session and every page (website, CRM, ERP, old vs new,
 ops console) reads and writes it, the way the real systems would share data through the
-integration layer. It starts seeded: the 27 workbook requests (21 original + 6 added edge cases) are processed, so
-the CRM and ERP have history and Dana Ruiz is a known customer.
+integration layer. It starts clean (inventory, prices and the existing accounts only; see demo/seed.py),
+or with the 27 workbook requests already processed when the sidebar's "Start from" is set to history.
+The manual page (ui/manual.py) keeps its own, separate state: it is today's process, with no workflow.
 """
 from __future__ import annotations
 
@@ -16,7 +17,7 @@ import streamlit as st
 from s2q.data import DEFAULT_DATA
 from s2q.workflow import Workflow
 
-from demo.seed import seed
+from demo.seed import clean, seed
 
 PAGES: dict = {}  # name -> st.Page, filled in by app.py so pages can link to each other
 
@@ -25,6 +26,7 @@ SYSTEM_STYLE = {
     "crm": ("#0b5cab", "#ffffff", "#0b5cab"),
     "erp": ("#2b3a4a", "#ffffff", "#2b3a4a"),
     "compare": ("#f2f4f7", "#1d2939", "#d0d5dd"),
+    "manual": ("#fff7ed", "#7c2d12", "#fdba74"),
 }
 
 
@@ -49,10 +51,13 @@ def wf() -> Workflow:
     if "wf" not in st.session_state:
         mode = st.session_state.get("mode", "auto")
         w = Workflow(mode=mode)
-        if w.extractor.llm:
-            readings = _seed_readings(mode, w.extractor.llm.model, os.path.getmtime(DEFAULT_DATA))
-            w.extractor.use_readings(copy.deepcopy(readings))  # each session gets its own copy to work on
-        seed(w)  # seeded history incl. the rep's qualification decisions; live emails still go to Claude
+        if st.session_state.get("start", "clean") == "clean":
+            clean(w)  # day one: nothing processed yet, so nothing to read
+        else:
+            if w.extractor.llm:
+                readings = _seed_readings(mode, w.extractor.llm.model, os.path.getmtime(DEFAULT_DATA))
+                w.extractor.use_readings(copy.deepcopy(readings))  # each session gets its own copy to work on
+            seed(w)  # seeded history incl. the rep's qualification decisions; live emails still go to Claude
         st.session_state.wf = w
     return st.session_state.wf
 

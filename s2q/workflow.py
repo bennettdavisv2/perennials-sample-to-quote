@@ -288,7 +288,7 @@ class Workflow:
                 # Several colorways fit ("the canvas"). What we sampled to this customer usually settles it.
                 hit = [s for s in skus if s in sampled]
                 if len(hit) == 1:
-                    skus = hit
+                    skus, it = hit, {**it, "inferred": False}  # settled by history: one note, not two
                     cust_notes.append(f"Quoted in {self.erp.get_item(hit[0])['color']}, the colorway we sampled to you.")
                 else:
                     why = "sampled more than one of them" if hit else "no sample history to go on"
