@@ -49,7 +49,7 @@ The orchestrator talks to systems only through adapters (`MockCRM`, `MockERP`). 
 - **NetSuite:** a pricing RESTlet (trade + volume + cut fee), sample and CFA order forms, lot-level holds, and a daily script that releases expired holds.
 - **Caveat to settle with their admin:** a *Pending Approval* sales order doesn't commit inventory by default, so a real hold needs either an approved "Hold" order or a transfer to a hold location. The PoC keeps that choice inside the adapter.
 
-The full list, with fields, scripts, owners and rollout, is in `production-handoff/README.md`, next to skeleton building blocks for each system.
+Engineering's build order is in `production-handoff/ROADMAP.md` (seven phases, from decisions and data clean-up through a read-only shadow mode to auto-send), with the specs in `REFERENCE.md` and skeleton building blocks for each system.
 
 ## 5. Where a human stays in the loop
 

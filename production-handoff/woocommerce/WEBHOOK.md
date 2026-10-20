@@ -1,5 +1,7 @@
 # WooCommerce → integration service
 
+**Roadmap steps:** 1.1, 2.1 ([ROADMAP.md](../ROADMAP.md)).
+
 Handoff items W1 to W5. Owner: WooCommerce / WordPress developer.
 
 ## Setup (W3)

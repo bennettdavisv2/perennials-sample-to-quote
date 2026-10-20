@@ -1,6 +1,8 @@
 # Salesforce building blocks
 
-**Skeleton / spec.** Source-format metadata (deploy with `sf project deploy start` to a sandbox first). Nothing here has been deployed to an org. Handoff items S1–S8 are in [`../README.md`](../README.md) §3.
+**Roadmap steps:** 1.4, 3.1, 3.2, 4.3–4.5 ([ROADMAP.md](../ROADMAP.md)).
+
+**Skeleton / spec.** Source-format metadata (deploy with `sf project deploy start` to a sandbox first). Nothing here has been deployed to an org. Handoff items S1–S8 are in [`../REFERENCE.md`](../REFERENCE.md) §3.
 
 | Path | What it is | Handoff |
 |---|---|---|
@@ -9,7 +11,7 @@
 | `.../objects/Lead/fields/Source_Request_Id__c.field-meta.xml` | One field as deployable metadata, as the pattern for the rest | §3.1 |
 
 ## Fields to add (same pattern as the example)
-See the table in [`../README.md` §3.1](../README.md#31-fields-and-picklists): Lead `Source_Request_Id__c`, `Qualification_Reason__c`, `Project_Type__c`, `Project_Name__c`; Contact `Alternate_Email__c`; Account `NetSuite_Customer_Id__c`, `Trade_Status__c`; Opportunity `Sample_Order_Ids__c`; Quote `Version__c`, `Review_Flags__c`, `Budgetary__c`, `NetSuite_Hold_SO__c`, `Hold_Expires__c`, `CFA_Order__c`; QuoteLineItem `Dye_Lots__c`, `Requested_Yards__c`; Task `Drafted_Message__c`; plus picklist values on Lead.Status and Quote.Status.
+See the table in [`../REFERENCE.md` §3.1](../REFERENCE.md#31-fields-and-picklists): Lead `Source_Request_Id__c`, `Qualification_Reason__c`, `Project_Type__c`, `Project_Name__c`; Contact `Alternate_Email__c`; Account `NetSuite_Customer_Id__c`, `Trade_Status__c`; Opportunity `Sample_Order_Ids__c`; Quote `Version__c`, `Review_Flags__c`, `Budgetary__c`, `NetSuite_Hold_SO__c`, `Hold_Expires__c`, `CFA_Order__c`; QuoteLineItem `Dye_Lots__c`, `Requested_Yards__c`; Task `Drafted_Message__c`; plus picklist values on Lead.Status and Quote.Status.
 
 ## Automation (build in Setup; specs below)
 

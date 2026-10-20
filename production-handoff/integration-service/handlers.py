@@ -4,7 +4,7 @@ Each handler authenticates the caller, turns the event into one or more s2q requ
 dict shape the workbook rows use), and puts them on the SQS FIFO queue. No business logic here:
 the worker runs s2q.workflow. Respond fast (WooCommerce and Pub/Sub retry on slow or non-2xx).
 
-Handoff §5.1. Secrets from AWS Secrets Manager (names in template.yaml).
+REFERENCE.md §5.1. Secrets from AWS Secrets Manager (names in template.yaml).
 """
 from __future__ import annotations
 

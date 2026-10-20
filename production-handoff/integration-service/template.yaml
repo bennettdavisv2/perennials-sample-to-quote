@@ -1,4 +1,4 @@
-# AWS SAM template. SKELETON / SPEC: not deployed. Handoff §1 and §5.
+# AWS SAM template. SKELETON / SPEC: not deployed. REFERENCE.md §1 and §5.
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: Perennials sample-to-quote integration service

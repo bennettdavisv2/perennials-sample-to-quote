@@ -1,4 +1,4 @@
--- Integration service state (RDS Postgres). SKELETON / SPEC: not applied to a database yet. Handoff §5.3.
+-- Integration service state (RDS Postgres). SKELETON / SPEC: not applied to a database yet. REFERENCE.md §5.3.
 
 -- One row per inbound request. source_id is the idempotency key: a webhook or Pub/Sub message
 -- delivered twice inserts once (INSERT ... ON CONFLICT (source_id) DO NOTHING).

@@ -1,7 +1,7 @@
 """SQS FIFO consumer (Lambda). SKELETON / SPEC: not deployed or tested.
 
 Runs the same workflow as the demo, s2q.workflow.Workflow, with real adapters and Postgres-backed
-state instead of in-memory mocks. Handoff §5.2–5.4.
+state instead of in-memory mocks. REFERENCE.md §5.2–5.4.
 """
 from __future__ import annotations
 

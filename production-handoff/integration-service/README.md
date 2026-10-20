@@ -1,5 +1,7 @@
 # Integration service (AWS)
 
+**Roadmap steps:** 0.4, 2.3, 2.4, and the writes in phases 3–6 ([ROADMAP.md](../ROADMAP.md)).
+
 **Skeleton / spec.** These files define the service's shape, its endpoints and every external call. None of it has been deployed or run. The business logic it runs is the tested `s2q/` package at the repo root, unchanged.
 
 | File | What it is |

@@ -2,7 +2,7 @@
 
 Same method names and return shapes as MockCRM, so s2q.workflow runs unchanged. Every method
 records its call in the audit log, as the mock does. Auth: OAuth 2.0 JWT bearer flow with the
-integration user (handoff S8). Field and object names: handoff §3.1.
+integration user (handoff S8). Field and object names: REFERENCE.md §3.1.
 """
 from __future__ import annotations
 

@@ -1,6 +1,8 @@
 # NetSuite building blocks
 
-**Skeleton / spec.** SuiteScript 2.1 files plus a record definition. Nothing here has been deployed to an account. Handoff items N1–N10 are in [`../README.md`](../README.md) §4.
+**Roadmap steps:** 1.5, 1.6, 4.2, 5.1–5.3 ([ROADMAP.md](../ROADMAP.md)).
+
+**Skeleton / spec.** SuiteScript 2.1 files plus a record definition. Nothing here has been deployed to an account. Handoff items N1–N10 are in [`../REFERENCE.md`](../REFERENCE.md) §4.
 
 | File | What it is | Handoff |
 |---|---|---|
