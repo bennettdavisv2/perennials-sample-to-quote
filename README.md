@@ -25,26 +25,47 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-  s1["Designer orders<br/>samples online"] --> wh["Website<br/>webhook"]
-  q1["Designer emails<br/>for a quote"] --> ai["AI reads<br/>the email"]
-  wh --> orch{{"Integration service"}}
-  ai --> orch
-  orch --> dq["Lead created,<br/>qualified, converted"]
-  dq --> sf[("Salesforce")]
-  orch -- "sample order,<br/>fabric hold" --> ns[("NetSuite")]
-  orch --> pr["Priced from<br/>NetSuite"]
-  pr -- "quote" --> sf
-  orch -- "only when unsure" --> rv["🧑 Rep reviews a<br/>drafted email"]
-  orch --> em["Customer email<br/>sent automatically"]
+  subgraph WEB["Website · WooCommerce"]
+    s1["Designer orders<br/>samples"]
+  end
+  subgraph MAIL["Email · quotes@perennialsfabrics.com"]
+    q1["Designer emails<br/>for a quote"]
+  end
+  subgraph INT["Integration service · AWS"]
+    wh["Order received<br/>instantly"]
+    ai["AI reads<br/>the email"]
+    dec{{"Match, qualify,<br/>decide"}}
+  end
+  subgraph SF["Salesforce"]
+    sf1["Lead → Opportunity<br/>→ Quote"]
+    em["Customer email<br/>sent automatically"]
+    rv["🧑 Rep reviews a<br/>drafted email"]
+  end
+  subgraph NS["NetSuite"]
+    ns1["Sample order · Price<br/>· Fabric hold"]
+  end
+  s1 --> wh --> dec
+  q1 --> ai -- "no back-and-forth" --> dec
+  dec -- "no retyping" --> sf1
+  dec -- "no retyping" --> ns1
+  sf1 --> em
+  dec -. "only when unsure:<br/>people only for judgment" .-> rv
   classDef auto fill:#e6f4ea,stroke:#1e8e3e,color:#222
   classDef human fill:#fff4e5,stroke:#e8a33d,color:#222
   classDef sys fill:#e8f0fe,stroke:#1a73e8,color:#222
-  class s1,wh,q1,ai,orch,dq,pr,em auto
+  class s1,q1,wh,ai,dec,em auto
   class rv human
-  class sf,ns sys
+  class sf1,ns1 sys
+  style WEB fill:#f8f9fb,stroke:#d0d5dd
+  style MAIL fill:#f8f9fb,stroke:#d0d5dd
+  style INT fill:#f8f9fb,stroke:#d0d5dd
+  style SF fill:#f8f9fb,stroke:#d0d5dd
+  style NS fill:#f8f9fb,stroke:#d0d5dd
 ```
 
 🔴 retyping or an email between people · 🟢 automated · 🟠 a person decides · 🔵 system of record
+
+**Dana Ruiz's journey (two sample requests, a quote and a revision): about 35 manual steps and 84 retyped fields today → 2 rep approvals with the workflow.** The demo's Old vs New page shows it step by step; manual-side numbers are labelled estimates.
 
 ### What changed, and how it's built
 
@@ -71,8 +92,6 @@ flowchart TB
 | [`production-handoff/`](production-handoff/) | Engineering | The system-by-system build list ([README](production-handoff/README.md)) plus **skeleton building blocks**: WooCommerce plugin and webhook, the AWS integration service (handlers, worker, Salesforce/NetSuite adapters, schema, SAM template), Salesforce Apex and metadata, NetSuite SuiteScripts, Gmail watch setup |
 | [`docs/`](docs/) | Reviewers | Design note and AI usage notes |
 | [`case-study-prompt/`](case-study-prompt/) | | Bertram's original brief and workbook, unchanged |
-
-In the demo's seeded data, Dana Ruiz's journey (2 sample requests, a quote, a revision) takes about **35 manual steps, 84 retyped fields and 8 internal emails** today, versus **2 rep approvals** with the workflow. The manual-side numbers are illustrative estimates (`demo/baseline.py`), not measurements.
 
 ## Run it (under 5 minutes)
 
