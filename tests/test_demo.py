@@ -1,7 +1,7 @@
 """The demo's storefront / inbox entry points and the old-vs-new comparison."""
 import pytest
 
-from s2q import baseline, site
+from demo import baseline, site
 from s2q.workflow import Workflow
 
 DANA = {"name": "Dana Ruiz", "company": "Ruiz Interiors", "email": "dana@ruizinteriors.example"}

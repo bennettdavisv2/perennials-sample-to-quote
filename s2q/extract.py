@@ -288,7 +288,7 @@ class CartIntake:
     Length + unit (Yards / Feet / Meters), Date Needed, CFA Waived / Requested and Project
     Name. Only the order note is free text, and it is read for who is asking, not for SKUs.
 
-    Cart shape (data/web_cart_submissions.json):
+    Cart shape (demo/data/web_cart_submissions.json):
       skus [str], project_type (residential|hospitality|None), project_name, note,
       quote_lines [{sku, length, unit, date_needed, cfa}]  (quote form only)
     """

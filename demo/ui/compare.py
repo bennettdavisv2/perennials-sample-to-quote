@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from s2q import baseline
+from demo import baseline
 
 from .common import acct_name, md, system_header, wf
 
@@ -39,7 +39,7 @@ def render():
         m[2].metric("Automated", t["automated actions"])
     st.caption("Touches = steps a person does · Retyped = values copied from one system or form into another · "
                "Wait = hours work sits in someone else's inbox. "
-               "Manual-side minutes, fields, emails and waits are illustrative estimates (s2q/baseline.py), "
+               "Manual-side minutes, fields, emails and waits are illustrative estimates (demo/baseline.py), "
                "not measurements. Each automated action below replaces the manual step on its left.")
 
     for rid in rids:

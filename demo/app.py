@@ -1,6 +1,6 @@
 """Perennials sample-to-quote demo.
 
-    streamlit run app.py
+    streamlit run demo/app.py      (from the repo root)
 
 Pages share one in-memory workflow (seeded with the 27 workbook requests: 21 original + 6 added edge cases):
   Website      mock storefront: browse, add samples / quote lines, check out
@@ -11,9 +11,14 @@ Pages share one in-memory workflow (seeded with the 27 workbook requests: 21 ori
 """
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import streamlit as st
 
-from ui import common, compare, crm, erp, ops, website
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # repo root, so `s2q` and `demo` import
+
+from demo.ui import common, compare, crm, erp, ops, website  # noqa: E402
 
 st.set_page_config(page_title="Perennials Sample-to-Quote", page_icon="🧵", layout="wide")
 
@@ -53,6 +58,6 @@ with st.sidebar:
     if st.button("↺ Reset demo", width="stretch"):
         common.reset()
         st.rerun()
-    st.caption("All systems are in-memory mocks seeded from `data/perennials_sample_data.xlsx`.")
+    st.caption("All systems are in-memory mocks seeded from `demo/data/perennials_sample_data.xlsx`.")
 
 nav.run()

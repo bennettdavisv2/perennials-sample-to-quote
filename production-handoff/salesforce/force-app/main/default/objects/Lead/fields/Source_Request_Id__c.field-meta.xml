@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Idempotency key: WooCommerce order id or Gmail message id. One example of the field metadata;
+     the full field list is in production-handoff/salesforce/README.md. -->
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Source_Request_Id__c</fullName>
+    <label>Source Request Id</label>
+    <type>Text</type>
+    <length>64</length>
+    <externalId>true</externalId>
+    <unique>true</unique>
+    <caseSensitive>false</caseSensitive>
+    <required>false</required>
+</CustomField>

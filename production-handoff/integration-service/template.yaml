@@ -1,0 +1,78 @@
+# AWS SAM template. SKELETON / SPEC: not deployed. Handoff §1 and §5.
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Perennials sample-to-quote integration service
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    Environment:
+      Variables:
+        S2Q_MODEL: claude-opus-5-5
+        SECRETS_PREFIX: s2q/            # s2q/woocommerce-webhook-secret, s2q/salesforce-jwt-key,
+                                        # s2q/netsuite-cert, s2q/anthropic-api-key, s2q/gmail-service-account
+
+Resources:
+  Api:
+    Type: AWS::Serverless::HttpApi
+
+  IngestFunction:                       # handlers.lambda_handler: authenticate, normalise, enqueue
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers.lambda_handler
+      Environment:
+        Variables:
+          QUEUE_URL: !Ref RequestQueue
+      Events:
+        WooCommerce: {Type: HttpApi, Properties: {ApiId: !Ref Api, Method: POST, Path: /webhooks/woocommerce}}
+        Gmail:       {Type: HttpApi, Properties: {ApiId: !Ref Api, Method: POST, Path: /webhooks/gmail}}
+        Salesforce:  {Type: HttpApi, Properties: {ApiId: !Ref Api, Method: POST, Path: /callbacks/salesforce}}
+      Policies:
+        - SQSSendMessagePolicy: {QueueName: !GetAtt RequestQueue.QueueName}
+
+  WorkerFunction:                       # worker.lambda_handler: runs s2q.workflow
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: worker.lambda_handler
+      Timeout: 120                      # Claude + Salesforce + NetSuite calls per request
+      Events:
+        Queue:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt RequestQueue.Arn
+            BatchSize: 5
+            FunctionResponseTypes: [ReportBatchItemFailures]
+      # VPC config for RDS, and secretsmanager:GetSecretValue on SECRETS_PREFIX*, omitted in this skeleton
+
+  RequestQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      FifoQueue: true                   # MessageGroupId = customer email: one customer's requests in order
+      ContentBasedDeduplication: false  # handlers set MessageDeduplicationId = source id
+      VisibilityTimeout: 720            # >= 6 x worker timeout
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DeadLetterQueue.Arn
+        maxReceiveCount: 3
+
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties: {FifoQueue: true}
+
+  DeadLetterAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: A request failed 3 times and needs a person
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions: [{Name: QueueName, Value: !GetAtt DeadLetterQueue.QueueName}]
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+
+  # Scheduled jobs (EventBridge -> small functions, not shown):
+  #   daily:   renew Gmail users.watch (expires after 7 days); reconcile Salesforce quotes vs NetSuite holds
+  #   nightly: NetSuite items -> Salesforce Product2 / PricebookEntry (S1); discontinued flag -> WooCommerce (W5)
+  # Database: RDS Postgres with schema.sql (omitted here).

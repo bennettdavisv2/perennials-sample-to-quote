@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from s2q import baseline, site
+from demo import baseline, site
 
 from .common import (acct_name, link, md, money, open_reviews, order_lines, reasons, review_buttons, review_message,
                      system_header, table, wf)

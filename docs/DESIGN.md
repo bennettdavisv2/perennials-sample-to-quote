@@ -13,7 +13,7 @@ The sample-to-quote journey crosses a website, a CRM and an ERP that don't talk 
 | The rep emails to clarify color, quantity or trade status | Settled from the catalog and the customer's own samples; otherwise one drafted email |
 | The rep emails Ops to hold yardage; old holds get forgotten | A one-lot hold is placed automatically and released on revision or after 14 days |
 
-**The target:** no value is typed twice, and no customer waits on an internal email. On the seeded data, Dana Ruiz's journey goes from about 35 manual steps, 84 retyped fields and 8 internal emails to 2 rep approvals. The manual-side numbers are illustrative estimates (`s2q/baseline.py`).
+**The target:** no value is typed twice, and no customer waits on an internal email. On the seeded data, Dana Ruiz's journey goes from about 35 manual steps, 84 retyped fields and 8 internal emails to 2 rep approvals. The manual-side numbers are illustrative estimates (`demo/baseline.py`).
 
 ## 2. Architecture
 
@@ -49,7 +49,7 @@ The orchestrator talks to systems only through adapters (`MockCRM`, `MockERP`). 
 - **NetSuite:** a pricing RESTlet (trade + volume + cut fee), sample and CFA order forms, lot-level holds, and a daily script that releases expired holds.
 - **Caveat to settle with their admin:** a *Pending Approval* sales order doesn't commit inventory by default, so a real hold needs either an approved "Hold" order or a transfer to a hold location. The PoC keeps that choice inside the adapter.
 
-The full list, with fields, scripts, owners and rollout, is in `ENGINEERING_HANDOFF.md`.
+The full list, with fields, scripts, owners and rollout, is in `production-handoff/README.md`, next to skeleton building blocks for each system.
 
 ## 5. Where a human stays in the loop
 

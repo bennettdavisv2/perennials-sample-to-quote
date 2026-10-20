@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from s2q import site
+from demo import site
 
 from .common import link, md, swatch, system_header, wf
 

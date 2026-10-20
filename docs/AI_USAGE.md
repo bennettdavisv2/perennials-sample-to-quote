@@ -10,7 +10,7 @@
 
 ## How I worked with it
 
-There were two phases. First, Claude produced a rough draft from the brief and the workbook. Second, I reviewed that draft and directed every change. Each change followed the same loop: Claude proposed a plan, I approved or redirected it, Claude built it, the tests and the running app were checked, and then I committed. Seven commits in the repo history are from the review phase.
+There were two phases. First, Claude produced a rough draft from the brief and the workbook. Second, I reviewed that draft and directed every change. Each change followed the same loop: Claude proposed a plan, I approved or redirected it, Claude built it, the tests and the running app were checked, and then I committed. Every commit after the first one in the repo history is from the review phase.
 
 ## Decisions I made
 
@@ -21,6 +21,7 @@ There were two phases. First, Claude produced a rough draft from the brief and t
 | **Allow guest sample checkout** | The real site uses a trade login. Keeping guest checkout keeps lead qualification meaningful for the exercise; it's stated as an assumption. |
 | **Two front doors, one pipeline** | Website and email are the two intake channels; everything after intake is shared. I folded the email demo into the CRM's quotes@ inbox instead of a separate mock mail app. |
 | **Extend the provided data with 6 edge cases** | So reviewers can see the harder cases tested, not just the provided rows. Two of them exposed real gaps: an ambiguous "the linen" could supersede an open quote and release its hold, and Claude reading a Gmail sender as a consumer bypassed her open trade review and auto-sent a list-price quote. Both fixed and tested. |
+| **Separate the demo from the production handoff** | The repo is split into the shared core (`s2q/`), the walkthrough (`demo/`) and engineering's building blocks (`production-handoff/`), so reviewers can see what is demo-only and what would ship. The production files are skeletons and specs, labelled as not yet run against real systems. |
 | **Demo and handoff scope** | A Streamlit multipage demo seeded with the workbook, labelled estimates for today's process, and a handoff that assumes a custom AWS service, Google Workspace, and checklist-level specs. |
 
 ## Where it helped

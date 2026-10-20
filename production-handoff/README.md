@@ -1,6 +1,18 @@
 # Engineering handoff: sample-to-quote integration
 
-This is the list of changes engineering would make to put the PoC into production at Perennials. It is organised by system, so each owner gets their own checklist. Every rule referenced here is implemented and tested in the PoC (`s2q/`). The PoC is the reference behaviour, and its 26 tests become the acceptance tests.
+This is the list of changes engineering would make to put the PoC into production at Perennials. It is organised by system, so each owner gets their own checklist. Every rule referenced here is implemented and tested in the shared core (`s2q/` at the repo root). That core is the reference behaviour, and its tests become the acceptance tests.
+
+## Building blocks in this folder
+
+**Skeletons and specs:** each file shows the shape, the exact API calls and what's left to write. None of it has been deployed or run against a real WooCommerce site, Salesforce org or NetSuite account. `tests/test_handoff.py` checks that the adapters cover every method the workflow uses, and tests the webhook signature check.
+
+| Folder | Building blocks | Items below |
+|---|---|---|
+| [`woocommerce/`](woocommerce/) | `s2q-order-meta.php` (mu-plugin: product-page fields → order line-item meta), `WEBHOOK.md` (setup, payload contract, signature) | W1–W5 |
+| [`integration-service/`](integration-service/) | `handlers.py` (webhook, Gmail push, Salesforce callback), `worker.py` (queue consumer running `s2q.workflow`), `adapters/salesforce.py` + `adapters/netsuite.py` (same interface as the mocks), `schema.sql`, `template.yaml` (AWS SAM), refactor list | §5 |
+| [`salesforce/`](salesforce/) | Apex `S2QConvertLead` + test outline, field metadata example, specs for the review queue, approval process, callback Flow and integration user | S1–S8 |
+| [`netsuite/`](netsuite/) | `s2q_price_restlet.js` (pricing), `s2q_hold_expiry_mr.js` (daily hold release), pricing-rule custom record | N1–N10 |
+| [`gmail/`](gmail/) | `setup_watch.py` (watch on quotes@, renewed daily), Pub/Sub setup | E1–E4 |
 
 **Assumed stack**
 
@@ -93,6 +105,8 @@ The order's `customer_note` is the order note. Billing name, company and email g
 | `Quote.CFA_Order__c` | Text | NetSuite CFA cutting order |
 | `QuoteLineItem.Dye_Lots__c` | Text | e.g. `L-2401 52 yd + L-2417 35 yd` |
 | `QuoteLineItem.Requested_Yards__c` | Number | When less than requested is quoted (shortage or discontinued) |
+| `Task.Drafted_Message__c` | Long Text | The customer email the service drafted for this review (sent by **Send question** or on approval) |
+| `Task.Decision__c` | Picklist: Approve, Send question, Reject | Set by the Task quick actions; fires the callback Flow (S6) |
 
 ### 3.2 Configuration and automation
 
@@ -132,7 +146,7 @@ The order's `customer_note` is the order note. Billing name, company and email g
 
 | Endpoint | Auth | Does |
 |---|---|---|
-| `POST /webhooks/woocommerce` | Verify `X-WC-Webhook-Signature` | Split the order into a sample request and/or a quote request (as in `s2q/site.py`) and enqueue. Respond 200 within the WooCommerce timeout. |
+| `POST /webhooks/woocommerce` | Verify `X-WC-Webhook-Signature` | Split the order into a sample request and/or a quote request (as in `demo/site.py`) and enqueue. Respond 200 within the WooCommerce timeout. |
 | `POST /webhooks/gmail` | Verify the Pub/Sub OIDC token | Call `users.history.list` from the last stored historyId, fetch new messages, and enqueue each one with its message id. |
 | `POST /callbacks/salesforce` | Named-credential header or JWT | An approve/reject decision. Runs `Workflow.approve` / `reject` (deferred action). |
 | EventBridge daily | none | Renew the Gmail `users.watch` (it expires after 7 days); reconcile Salesforce and NetSuite holds. |
@@ -152,7 +166,7 @@ The order's `customer_note` is the order note. Billing name, company and email g
 | `s2q/adapters/erp.py` `MockERP` | `NetSuiteERP` | `items`/`lots_for` call SuiteQL (N6); `price` calls the RESTlet (N5); `allocate` keeps the same single-lot-first rule; sample, hold and CFA orders are created with the forms in N7/N8; `release_reservation` closes lines. |
 | `s2q/audit.py` | Postgres `audit_log` | One row per external call (request id, system, action, payload hash, response id, status). |
 | `s2q/data.py` | removed | Live reads replace the workbook. Pricing comes from N4. |
-| `s2q/site.py`, `s2q/baseline.py`, `ui/`, `app.py` | demo only | Not shipped. |
+| `demo/` (app, pages, `site.py`, `baseline.py`, data) | demo only | Not shipped. Before production, make the small `s2q/` refactors listed in [`integration-service/README.md`](integration-service/README.md#refactors-to-make-in-s2q-before-production). |
 
 ### 5.3 Data store (Postgres)
 

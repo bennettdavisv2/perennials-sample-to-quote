@@ -61,9 +61,17 @@ flowchart TB
 | 10 | **People only where judgment matters:** big quotes, split lots, shortages, backorders, gray-zone leads. | Salesforce Task / Approval Process (e.g. over $20k); approve runs the held action |
 | 11 | **Every step is traceable.** | Audit log per request, inbound message / order id as the idempotency key; retries + dead-letter queue |
 
-**Handoff:** [`docs/ENGINEERING_HANDOFF.md`](docs/ENGINEERING_HANDOFF.md) lists the exact changes for each system (WooCommerce, Salesforce, NetSuite, the integration service, email), with owners, sizes, rollout phases and open questions.
+## What's in this repo
 
-In the demo's seeded data, Dana Ruiz's journey (2 sample requests, a quote, a revision) takes about **35 manual steps, 84 retyped fields and 8 internal emails** today, versus **2 rep approvals** with the workflow. The manual-side numbers are illustrative estimates (`s2q/baseline.py`), not measurements.
+| Folder | For | What's inside |
+|---|---|---|
+| [`s2q/`](s2q/) | Both | **The shared core:** the workflow, intake (cart + email), dedupe, qualification, pricing, email templates, and the CRM/ERP adapter interface with in-memory mocks. Tested; production runs it unchanged. |
+| [`demo/`](demo/) | Reviewers | The walkthrough app (storefront, CRM, ERP, Old vs New, ops console), its data (the workbook + 6 added edge cases) and a filming guide |
+| [`production-handoff/`](production-handoff/) | Engineering | The system-by-system build list ([README](production-handoff/README.md)) plus **skeleton building blocks**: WooCommerce plugin and webhook, the AWS integration service (handlers, worker, Salesforce/NetSuite adapters, schema, SAM template), Salesforce Apex and metadata, NetSuite SuiteScripts, Gmail watch setup |
+| [`docs/`](docs/) | Reviewers | Design note and AI usage notes |
+| [`case-study-prompt/`](case-study-prompt/) | | Bertram's original brief and workbook, unchanged |
+
+In the demo's seeded data, Dana Ruiz's journey (2 sample requests, a quote, a revision) takes about **35 manual steps, 84 retyped fields and 8 internal emails** today, versus **2 rep approvals** with the workflow. The manual-side numbers are illustrative estimates (`demo/baseline.py`), not measurements.
 
 ## Run it (under 5 minutes)
 
@@ -73,9 +81,9 @@ Requires Python 3.10+.
 python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-streamlit run app.py          # demo at http://localhost:8501
+streamlit run demo/app.py     # demo at http://localhost:8501/
 python -m s2q.cli -v          # or headless: every workbook request, stage by stage, with email drafts
-pytest -q                     # 36 tests
+pytest -q                     # 40 tests
 ```
 
 **Optional: use Claude for email extraction.** Run `export ANTHROPIC_API_KEY=sk-...` before starting. If the key is in a `.env` one folder up, load it with `set -a; source ../.env; set +a`. Set `S2Q_MODEL` to override the model (default `claude-opus-5-5`, low effort). Without a key, the deterministic rules extractor is used and everything works the same. With a key, Claude reads each email and the rules run as a cross-check; if they disagree, the request goes to review. Website carts are structured, so they never go to the LLM.
@@ -135,29 +143,23 @@ The 21 requests Bertram provided all pass, but they don't exercise several cases
 ## Layout
 
 ```
-app.py                  Streamlit demo: page router + sidebar demo script
-ui/website.py           Mock storefront (product page, Add Sample, Request A Quote, cart, checkout)
-ui/crm.py               Salesforce-style CRM (quotes@ inbox, leads, opportunities, tasks)
-ui/erp.py               NetSuite-style ERP (inventory by dye lot, sales orders, customers)
-ui/compare.py           Old vs new for one customer journey
-ui/ops.py               Ops console (request detail, review queue, integration log)
-ui/common.py            Shared session state (seeded workflow) and helpers
-s2q/workflow.py         Orchestrator: the six stages, review queue, approve/reject
-s2q/site.py             What the website checkout and the quotes@ inbox send into the workflow
-s2q/extract.py          Website cart -> request (CartIntake); email free text -> request (Claude structured outputs, or rules)
-s2q/identity.py         Match sender to existing lead/contact/account (dedupe)
-s2q/qualify.py          Qualification policy table
-s2q/pricing.py          Pricing math (pure functions)
-s2q/emails.py           Customer email templates (numbers come only from pricing)
-s2q/baseline.py         Today's manual steps (estimates) behind the old-vs-new comparison
-s2q/adapters/crm.py     Mock Salesforce
-s2q/adapters/erp.py     Mock NetSuite (items, dye-lot inventory, sample orders, reservations, CFA)
-s2q/data.py             Loads the workbook (pricing rules parsed from the Pricing Rules tab) and the web carts
-s2q/cli.py              Headless run over the workbook requests
-data/web_cart_submissions.json  Each WEB row as the real site would submit it (exact SKUs + Project Type + note)
-docs/ENGINEERING_HANDOFF.md  Exact changes per system for engineering (fields, scripts, endpoints, rollout)
-docs/DESIGN.md          Design note (architecture, sources of truth, mapping, human-in-the-loop, next week)
-docs/AI_USAGE.md        How AI was used to build this, and inside it
+s2q/                        Shared core (tested; ships to production unchanged)
+  workflow.py               Orchestrator: the six stages, review queue, approve / reject / ask
+  extract.py                Website cart -> request (CartIntake); email -> request (Claude structured outputs, or rules)
+  identity.py, qualify.py   Dedupe against the CRM; qualification policy table
+  pricing.py, emails.py     Pricing math; customer email templates (numbers only from pricing)
+  adapters/                 CRM / ERP interface, with in-memory MockCRM / MockERP
+  data.py, cli.py           Workbook loader; headless run
+demo/                       Walkthrough app (not shipped)
+  app.py, ui/               Streamlit: Website, CRM, ERP, Old vs New, Ops console
+  site.py, baseline.py      Checkout / quotes@ entry points; today's manual steps (estimates)
+  data/                     Workbook (21 original + 6 added rows) and web carts
+  README.md                 How to run it and how to film the walkthrough
+production-handoff/         For engineering (skeletons and specs, not run against real systems)
+  README.md                 System-by-system build list, rollout, open questions
+  woocommerce/  integration-service/  salesforce/  netsuite/  gmail/
+docs/                       DESIGN.md, AI_USAGE.md
+tests/                      Core, demo and handoff-interface tests
 ```
 
 ## Assumptions
@@ -181,7 +183,7 @@ Ambiguities in the brief and data, and the call I made on each:
 15. **Shortage:** quote the full quantity, hold what's available, flag the gap. **Discontinued:** quote at most the remaining stock.
 16. **Any flag, or a total over $20k, sends a quote to review.** Clean quotes are sent automatically.
 17. Simulated "now" is each request's received time; live demo submissions are stamped an hour after the latest request (quote valid 30 days, hold 14 days). Shipping and tax are excluded.
-18. **Website requests are structured, like the real site.** The brief describes a free-text form, but on perennialsfabrics.com a sample is added to the cart from a product page (one colorway = one variant SKU, plus a Project Type), and "Request A Quote" sends Length + unit, Date Needed, CFA Waived / Requested and Project Name. So a web customer cannot name a fabric that doesn't exist, and AI extraction is only used on email. Each WEB row was converted once into its cart (`data/web_cart_submissions.json`); the original message is kept as the order note, and "everything" / "all your solids" / "every color of X" became the SKUs those imply. A cart SKU missing from the ERP (e.g. a stale cart) is flagged, never substituted.
+18. **Website requests are structured, like the real site.** The brief describes a free-text form, but on perennialsfabrics.com a sample is added to the cart from a product page (one colorway = one variant SKU, plus a Project Type), and "Request A Quote" sends Length + unit, Date Needed, CFA Waived / Requested and Project Name. So a web customer cannot name a fabric that doesn't exist, and AI extraction is only used on email. Each WEB row was converted once into its cart (`demo/data/web_cart_submissions.json`); the original message is kept as the order note, and "everything" / "all your solids" / "every color of X" became the SKUs those imply. A cart SKU missing from the ERP (e.g. a stale cart) is flagged, never substituted.
 19. **Guest sample checkout is allowed.** The real site steers samples through a trade account (resale number), which would move qualification to registration. Allowing guest checkout keeps lead qualification (stage 2) meaningful for this exercise.
 20. **CFA (cutting for approval)** is the term for the customer approving a dye lot. A split across lots asks for a CFA from each lot; "CFA Requested" on the web quote form creates a CFA cutting order from the held lot.
 21. **Every review comes with a drafted customer message,** so a rep's next step is one click instead of a thread: a trade-verification request, a "which 10 first?" pick list, one clarifying question (color tie or missing quantity), or the quote itself. Sending a question keeps a qualification / sample review open until the customer replies.

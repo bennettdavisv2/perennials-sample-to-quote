@@ -6,7 +6,7 @@ The workbook stands in for three systems:
   * Existing CRM Records  -> CRM accounts + contacts
   * Inbound Requests      -> website form submissions + inbound emails
 
-Website requests are enriched from data/web_cart_submissions.json: on the real site a
+Website requests are enriched from demo/data/web_cart_submissions.json: on the real site a
 sample is added to the cart from a product page (exact colorway SKU + Project Type), so
 the website hands us structured lines, with the free text only as an order note.
 """
@@ -20,7 +20,7 @@ from pathlib import Path
 
 import openpyxl
 
-DEFAULT_DATA = Path(__file__).resolve().parent.parent / "data" / "perennials_sample_data.xlsx"
+DEFAULT_DATA = Path(__file__).resolve().parent.parent / "demo" / "data" / "perennials_sample_data.xlsx"
 CARTS_FILE = "web_cart_submissions.json"  # looked up next to the workbook
 
 
