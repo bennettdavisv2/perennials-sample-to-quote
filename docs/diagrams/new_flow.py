@@ -51,9 +51,10 @@ def box(col, row, label, kind, w=BOX_W):
              weight="600" if kind == "decision" else "normal")
 
 
-def arrow(points, label=None, at=None, anchor="start"):
+def arrow(points, label=None, at=None, anchor="start", dashed=False):
     d = "M" + " L".join(f"{x},{y}" for x, y in points)
-    out.append(f'<path d="{d}" fill="none" stroke="#475467" stroke-width="1.4" marker-end="url(#a)"/>')
+    dash = ' stroke-dasharray="4 3"' if dashed else ""
+    out.append(f'<path d="{d}" fill="none" stroke="#475467" stroke-width="1.4"{dash} marker-end="url(#a)"/>')
     if label:
         lx, ly = at
         text(lx, ly, label, size=11, anchor=anchor, fill="#475467")
@@ -81,7 +82,7 @@ box("crm_a", 6, "Lead → Opportunity", "auto", w=130)
 box("int", 7, "Up to 10 samples?", "decision", w=150)
 box("erp", 7, "Sample order", "result", w=130)
 box("int", 8, "Quote clear?", "decision", w=150)
-box("crm_a", 8, "Drafted question", "result", w=130)
+box("crm_a", 8, "Rep asks customer", "person", w=130)
 box("erp", 9, "Price + dye lot", "auto", w=130)
 box("erp", 10, "Fabric hold, 14 days", "auto", w=130)
 box("int", 11, "Flags or over $20k?", "decision", w=150)
@@ -131,8 +132,9 @@ arrow([(430, R[6] + 1), (212, R[6] + 1), (212, R[8]), (230, R[8])], "quote", (23
 arrow([(430, R[6] + 10), (222, R[6] + 10), (222, R[7]), (230, R[7])], "sample", (232, R[6] + 23))
 arrow([(380, R[7]), (750, R[7])], "yes", (580, R[7] - 6), "middle")
 arrow([(230, R[7] + 8), (198, R[7] + 8), (198, R[12]), (430, R[12])], "over 10", (204, R[12] - 6))
-arrow([(380, R[8]), (430, R[8])], "unclear", (405, R[8] - 6), "middle")
-arrow([(305, R[8] + h), (305, R[9]), (750, R[9])], "yes · a revision replaces the old quote and its hold", (311, R[8] + h + 13))
+arrow([(380, R[8] - 6), (430, R[8] - 6)], "unclear", (405, R[8] - 12), "middle")
+arrow([(430, R[8] + 6), (380, R[8] + 6)], "customer replies", (436, R[8] + h + 11), dashed=True)
+arrow([(305, R[8] + h), (305, R[9]), (750, R[9])], "yes", (311, R[8] + h + 27))
 arrow([(815, R[9] + h), (815, R[10] - h)])                                 # price -> hold (placed before review)
 arrow([(815, R[10] + h), (815, R[10] + h + gap / 2), (305, R[10] + h + gap / 2), (305, R[11] - h)])  # hold -> flags
 arrow([(380, R[11] - 6), (600, R[11] - 6)], "no", (590, R[11] - 11), "end")
