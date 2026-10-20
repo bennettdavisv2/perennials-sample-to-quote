@@ -65,7 +65,10 @@ def inbox(w):
 
 def opportunity(w):
     opps = sorted(w.crm.opportunities, key=lambda o: o["created"], reverse=True)
-    oid = st.selectbox("Opportunity", [o["id"] for o in opps],
+    # Open on the opportunity behind the most recent request (e.g. the order just placed on the website).
+    latest = baseline.account_of(w, max(w.inbox, key=lambda r: r["received"])["id"])
+    default = next((i for i, o in enumerate(opps) if o["account_id"] == latest), 0)
+    oid = st.selectbox("Opportunity", [o["id"] for o in opps], index=default,
                        format_func=lambda i: next(f"{o['id']} · {o['name']}" for o in opps if o["id"] == i))
     o = next(x for x in opps if x["id"] == oid)
     contact = next((c for c in w.crm.contacts if c["id"] == o["contact_id"]), {})

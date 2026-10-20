@@ -176,7 +176,7 @@ Ambiguities in the brief and data, and the call I made on each:
 10. **Same email domain + same name means the same person.** The new address is added as an alternate email.
 11. **One open opportunity per account is reused** for follow-ups. In production this would match on project (see design note).
 12. **A follow-up that says "update" or touches the same SKUs revises the open quote** (v1 to v2). The old hold is released before re-checking availability.
-13. **Inventory is held at quote time, even while the quote waits for review.** Holds expire in 14 days and are cheap to release. Budgetary quotes and out-of-stock/backordered lines are not held.
+13. **Inventory is held at quote time, even while the quote waits for review.** Holds carry a 14-day expiry and are cheap to release (the PoC records the expiry; the release job is in the engineering handoff). The customer's accept / decline step is out of scope. Budgetary quotes and out-of-stock/backordered lines are not held.
 14. **Dye lots:** prefer the smallest single lot that covers the whole line. If a split is needed, the quote goes to review (the customer must approve mixed lots).
 15. **Shortage:** quote the full quantity, hold what's available, flag the gap. **Discontinued:** quote at most the remaining stock.
 16. **Any flag, or a total over $20k, sends a quote to review.** Clean quotes are sent automatically.

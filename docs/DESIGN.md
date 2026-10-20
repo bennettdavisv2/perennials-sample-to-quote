@@ -68,5 +68,5 @@ Every review carries a drafted customer message (trade verification, "which 10 f
 1. **Real adapters in sandboxes** (Salesforce and NetSuite), settling the hold mechanism.
 2. **A larger extraction eval:** about 100 labeled historical emails, to tune review thresholds from data.
 3. **Project-level opportunity matching:** a designer runs several jobs at once; match on project, not "one open opportunity per account".
-4. **Customer-facing loop:** a quote acceptance link that turns the hold into an order; hold-expiry reminders.
+4. **The customer's decision (out of scope for this PoC):** an accept / decline link on the quote. Accept turns the hold into a sales order and marks the opportunity Closed Won; decline or expiry releases the hold and marks it Closed Lost, with a reminder before a hold ends. Today the loop ends when the quote is sent.
 5. **Measure the funnel:** sample → quote → order conversion by segment. That is the business case.
