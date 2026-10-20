@@ -2,6 +2,7 @@
 import pytest
 
 from demo import baseline, site
+from demo.seed import seed
 from s2q.workflow import Workflow
 
 DANA = {"name": "Dana Ruiz", "company": "Ruiz Interiors", "email": "dana@ruizinteriors.example"}
@@ -9,9 +10,7 @@ DANA = {"name": "Dana Ruiz", "company": "Ruiz Interiors", "email": "dana@ruizint
 
 @pytest.fixture()
 def seeded():
-    w = Workflow(mode="rules")
-    w.process_all()
-    return w
+    return seed(Workflow(mode="rules"))
 
 
 def test_storefront_sample_checkout_lands_on_existing_opportunity(seeded):

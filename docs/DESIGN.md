@@ -7,13 +7,13 @@ The sample-to-quote journey crosses a website, a CRM and an ERP that don't talk 
 | Today | With the workflow |
 |---|---|
 | A CSR retypes the web form into a Salesforce Lead | The cart webhook creates the Lead, with the exact SKUs attached |
-| A rep checks for duplicates, trade status, Do Not Sell | Identity match + policy table in seconds; reps see only the gray zone |
+| A rep checks for duplicates, trade status, Do Not Sell | Duplicates and known accounts are matched automatically; a rep qualifies each new sender in one click |
 | The rep emails Order Ops, who retypes the sample order into NetSuite | The NetSuite sample order is created and linked to the opportunity |
 | The rep replies "checking stock and price", then works it out in a spreadsheet and retypes the quote | AI reads the email; NetSuite price and dye-lot stock fill the Salesforce Quote in one step |
 | The rep emails to clarify color, quantity or trade status | Settled from the catalog and the customer's own samples; otherwise one drafted email |
 | The rep emails Ops to hold yardage; old holds get forgotten | A one-lot hold is placed automatically and released on revision or after 14 days |
 
-**The target:** no value is typed twice, and no customer waits on an internal email. On the seeded data, Dana Ruiz's journey goes from about 35 manual steps, 84 retyped fields and 8 internal emails to 2 rep approvals. The manual-side numbers are illustrative estimates (`demo/baseline.py`).
+**The target:** no value is typed twice, and no customer waits on an internal email. On the seeded data, Dana Ruiz's journey goes from about 36 manual steps, 86 retyped fields and 8 internal emails to 3 rep clicks (qualifying her once, approving two flagged quotes). The manual-side numbers are illustrative estimates (`demo/baseline.py`).
 
 ## 2. Architecture
 
@@ -30,7 +30,7 @@ The sample-to-quote journey crosses a website, a CRM and an ERP that don't talk 
 
 The orchestrator talks to systems only through adapters (`MockCRM`, `MockERP`). Production swaps in `SalesforceCRM` / `NetSuiteERP` with the same methods, and the audit log already records the real API call behind each mock call. It would run as a small Python service on AWS: idempotent webhooks, a queue that keeps each customer's requests in order, retries with a dead-letter queue, and external ids on every cross-system record.
 
-**Test data (a design decision).** Beyond the 21 provided requests, we added 6 edge-case rows to the workbook (marked in its Notes column; original kept in `case-study-prompt/`): a website quote in feet with CFA, quantities written as words, a real color tie during an open quote, a missing quantity, a discontinued fabric, and a quote from a sender whose trade check is still open. Two of them exposed real gaps that are now fixed: an ambiguous line could supersede an open quote, and the AI's reading of a sender could bypass a pending review. Policy now sends any AI-vs-rules disagreement about an unknown sender to a person.
+**Test data (a design decision).** Beyond the 21 provided requests, we added 6 edge-case rows to the workbook (marked in its Notes column; original kept in `case-study-prompt/`): a website quote in feet with CFA, quantities written as words, a real color tie during an open quote, a missing quantity, a discontinued fabric, and a quote from a sender whose trade check is still open. Two of them exposed real gaps that are now fixed: an ambiguous line could supersede an open quote, and the AI's reading of a sender could bypass a pending review. That second finding is one reason qualification is now manual for every new sender (§5).
 
 ## 3. Source of truth
 
@@ -55,13 +55,13 @@ The full list, with fields, scripts, owners and rollout, is in `production-hando
 
 Automation handles the clear cases: spam, known trade accounts, clean quotes. People handle judgment and money:
 
-- **Gray-zone leads** (trade language on a personal email): verify a resale certificate or website.
+- **Qualifying new senders.** Anyone without a CRM account waits for a rep's **Qualify** or **Reject**, with no system suggestion: trade status decides free samples and trade pricing, so a person makes that call. Known trade accounts, Do Not Sell and spam are still handled automatically.
 - **Oversized or open-ended sample requests** (over 10, "everything"): narrow the list. This is also a sales conversation.
 - **Inventory problems:** split dye lots (the customer approves a CFA from each lot), shortages, backorder vs. "ASAP".
 - **High-value quotes** (over $20k): manager approval. **Do Not Sell** hits notify the account owner.
 - **A color the system can't settle**, or Claude and the rules disagree.
 
-Every review carries a drafted customer message (trade verification, "which 10 first?", one clarifying question, or the quote), so the rep's next step is one click, not an email thread. Reviews appear as Salesforce Tasks, where reps already work. Only flag-free quotes and routine sample confirmations are sent automatically.
+Every other review carries a drafted customer message ("which 10 first?", one clarifying question, or the quote), so the rep's next step is one click, not an email thread. Reviews appear as Salesforce Tasks, where reps already work. Only flag-free quotes and routine sample confirmations are sent automatically.
 
 ## 6. With another week
 

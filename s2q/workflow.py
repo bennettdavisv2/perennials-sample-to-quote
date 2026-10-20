@@ -3,7 +3,7 @@
 One `process()` call takes an inbound request through the six stages:
 
   1 Sample request        Website -> CRM   create Lead (after spam filter + dedupe)
-  2 Lead qualification    CRM              policy table in qualify.py
+  2 Lead qualification    CRM              known accounts automatic; a rep qualifies new senders
   3 Sample order + Opp    ERP + CRM        convert lead, Opportunity, ERP sample order
   4 Quote request         Email -> CRM     match sender, find Opportunity
   5 Price quote           ERP -> CRM       ERP prices lines, CRM stores Quote
@@ -147,8 +147,7 @@ class Workflow:
             self._stage(res, 2, "review", "; ".join(q["reasons"]))
             self._stage(res, 3, "waiting", "Waiting on qualification review")
             self._review(res, "Lead qualification", "; ".join(q["reasons"]),
-                         "Qualify as trade and send requested samples", "qualify_and_sample", {"lead_id": lead["id"]},
-                         message=emails.trade_verification(req["name"], self._items_desc(ext)))
+                         "Qualify as trade and send the requested samples", "qualify_and_sample", {"lead_id": lead["id"]})
             res["outcome"] = "Needs review: qualification"
             return
 
@@ -247,12 +246,10 @@ class Workflow:
             lead = ident["lead"] or self.crm.create_lead(req, ext["segment_hint"], ext.get("project", ""))
             if q["decision"] == "review":
                 self.crm.set_lead_status(lead, "Needs Review", "; ".join(q["reasons"]))
-                self._stage(res, 4, "review", "Unknown sender; qualify before quoting")
-                res["email"] = emails.trade_verification(req["name"], self._items_desc(ext), quote=True)
-                self._review(res, "Quote request", "; ".join(q["reasons"]),
-                             "Send the drafted question, then quote once they're verified", "send_question", {},
-                             message=res["email"])
-                res["outcome"] = "Needs review: unknown sender"
+                self._stage(res, 4, "review", "New sender: a rep qualifies before quoting")
+                self._review(res, "Lead qualification", "; ".join(q["reasons"]),
+                             "Qualify as trade and send the quote", "qualify_and_quote", {"lead_id": lead["id"]})
+                res["outcome"] = "Needs review: qualification"
                 return
             if q["decision"] == "non_trade":
                 new_acct = {"name": f"{req['name']} (consumer)", "type": "Consumer / Retail"}
@@ -433,12 +430,19 @@ class Workflow:
         if rv["action"] in ("qualify_and_sample", "place_samples_capped"):
             lead = next(l for l in self.crm.leads if l["id"] == rv["payload"]["lead_id"])
             if rv["action"] == "qualify_and_sample":
-                self.crm.set_lead_status(lead, "Qualified", f"approved by {by} ({review_id})")
+                if lead["status"] != "Converted":
+                    self.crm.set_lead_status(lead, "Qualified", f"approved by {by} ({review_id})")
                 self._stage(res, 2, "done", f"Qualified by {by}")
             ident = identity.resolve(self.crm, res["request"])
             if ident["lead"] is lead and ident["contact"] is None:
                 ident = {**ident, "lead": None}
-            self._place_samples(res, lead, ident, approved_cap=True)
+            # Qualifying a sender doesn't approve an oversized order: only the sample-limit review does.
+            self._place_samples(res, lead, ident, approved_cap=rv["action"] == "place_samples_capped")
+        elif rv["action"] == "qualify_and_quote":
+            lead = next(l for l in self.crm.leads if l["id"] == rv["payload"]["lead_id"])
+            if lead["status"] != "Converted":
+                self.crm.set_lead_status(lead, "Qualified", f"approved by {by} ({review_id})")
+            self._quote_request(res)  # now qualified: converts the lead, prices, holds, drafts or sends the quote
         elif rv["action"] == "send_quote":
             quote = next(q for q in self.crm.quotes if q["id"] == rv["payload"]["quote_id"])
             if quote["status"] == "Superseded":
@@ -456,8 +460,8 @@ class Workflow:
         return rv
 
     def ask(self, review_id: str, by: str = "rep"):
-        """Send the review's drafted question to the customer. For a qualification or sample-limit review the
-        review stays open (the reply decides it); for a question-only review this is the whole action."""
+        """Send the review's drafted question to the customer. For a sample-limit review the review stays open
+        (the reply decides it); for a question-only review this is the whole action."""
         rv = next(r for r in self.reviews if r["id"] == review_id)
         if rv["status"] != "Open" or not rv.get("message") or rv["asked"] or rv["action"] == "send_quote":
             return rv  # a quote review's message is the quote itself: approving sends it
@@ -490,7 +494,7 @@ class Workflow:
                 self.erp.release_reservation(quote["reservation_id"], "quote rejected by rep")
             self.crm.set_quote_status(quote, "Rejected")
             res["outcome"] = "Quote rejected by rep (rework manually)"
-        elif rv["action"] == "qualify_and_sample":
+        elif rv["action"] in ("qualify_and_sample", "qualify_and_quote"):
             lead = next(l for l in self.crm.leads if l["id"] == rv["payload"]["lead_id"])
             self.crm.set_lead_status(lead, "Disqualified", f"rejected by {by}")
             res["outcome"] = "Disqualified by rep"

@@ -22,7 +22,7 @@ See the table in [`../README.md` §3.1](../README.md#31-fields-and-picklists): L
 - Action: HTTP Callout through Named Credential `S2Q_Service` → `POST /callbacks/salesforce` with `{record_id, decision, user}`.
 - Fault path: create a Task for the admin; the service also reconciles daily.
 
-**Task quick actions.** On the review Task's page: **Approve**, **Send question**, **Reject**. Each sets `Decision__c` and completes the Task, which fires the Flow.
+**Task quick actions.** Qualification Tasks (new senders): **Qualify**, **Reject**. Other review Tasks: **Approve**, **Send question**, **Reject**. Each sets `Decision__c` and completes the Task, which fires the Flow.
 
 **Customer email (S7).** Org-wide email address quotes@perennialsfabrics.com (verified). The service sends through the standard `emailSimple` action so each email is logged on the Contact. Quote PDF template: line items, total, valid-until, hold expiry.
 

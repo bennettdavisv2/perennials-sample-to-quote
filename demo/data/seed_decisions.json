@@ -1,0 +1,9 @@
+{
+  "_about": "What a rep decided on each new sender's qualification review in the seeded history (qualification is manual for anyone without a CRM account). The demo applies each decision right after its request. WEB-012 and EML-026 (Hannah Kim) are left open so the manual step can be shown live.",
+  "WEB-001": "qualify",
+  "WEB-002": "reject",
+  "WEB-008": "qualify",
+  "WEB-009": "reject",
+  "WEB-013": "qualify",
+  "EML-020": "reject"
+}

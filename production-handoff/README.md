@@ -89,7 +89,7 @@ The order's `customer_note` is the order note. Billing name, company and email g
 | Object.Field | Type | Purpose |
 |---|---|---|
 | `Lead.Source_Request_Id__c` | Text(64), External Id, Unique | Idempotency: the WooCommerce order id or Gmail message id |
-| `Lead.Qualification_Reason__c` | Long Text | Why the policy qualified, disqualified or flagged the lead (shown to the rep) |
+| `Lead.Qualification_Reason__c` | Long Text | Why the lead was qualified or not: account status for known accounts, or the rep's decision for new senders |
 | `Lead.Project_Type__c` | Picklist: Residential, Hospitality | From the cart |
 | `Lead.Project_Name__c` | Text(255) | Becomes the opportunity name |
 | `Lead.Status` | add **Needs Review**, **Nurture – Non-trade**, **Disqualified** | Qualification outcomes |
@@ -106,7 +106,7 @@ The order's `customer_note` is the order note. Billing name, company and email g
 | `QuoteLineItem.Dye_Lots__c` | Text | e.g. `L-2401 52 yd + L-2417 35 yd` |
 | `QuoteLineItem.Requested_Yards__c` | Number | When less than requested is quoted (shortage or discontinued) |
 | `Task.Drafted_Message__c` | Long Text | The customer email the service drafted for this review (sent by **Send question** or on approval) |
-| `Task.Decision__c` | Picklist: Approve, Send question, Reject | Set by the Task quick actions; fires the callback Flow (S6) |
+| `Task.Decision__c` | Picklist: Qualify, Approve, Send question, Reject | Set by the Task quick actions; fires the callback Flow (S6) |
 
 ### 3.2 Configuration and automation
 
@@ -115,7 +115,7 @@ The order's `customer_note` is the order note. Billing name, company and email g
 | S1 | **Products and price book.** | QuoteLineItem needs a PricebookEntry, so each NetSuite item must exist as a `Product2` (ProductCode = SKU) with a standard-price-book entry at list price. A nightly sync from NetSuite (INT) keeps them current. Net price goes in `UnitPrice`, and the discount is recorded on the line. | M |
 | S2 | **Lead convert endpoint.** | The REST API has no lead convert call. Add a small Apex REST class, `/services/apexrest/s2q/convertLead`, that wraps `Database.convertLead` and can convert into an existing Account/Contact (the PoC's `convert_lead`). | S |
 | S3 | **Duplicate and matching rules.** | A backstop for the service's own matching: email exact, then email domain + name, then company name. | S |
-| S4 | **Review queue.** | Queue **Sample-to-Quote Review**. The service creates `Task` records (Subject = reason, WhatId = Lead or Quote) assigned to the queue. | S |
+| S4 | **Review queue.** | Queue **Sample-to-Quote Review**. The service creates `Task` records (Subject = reason, WhatId = Lead or Quote) assigned to the queue. **Every new sender gets a qualification Task** with two actions, Qualify / Reject; approving runs the waiting sample order or quote. | S |
 | S5 | **Approval process: quotes.** | On Quote: entry criteria `Status = Pending Rep Review`. Step 1 is the account owner. Step 2, a manager, applies when `GrandTotal > 20000` (PoC `HIGH_VALUE`). | M |
 | S6 | **Approval callback.** | A record-triggered Flow fires when a Quote is approved or rejected, or a review Task is closed. It runs an **HTTP Callout** action (Named Credential → `https://<api>/callbacks/salesforce`) with `{record_id, decision, user}`. The service then does what was waiting: sends the quote, or places the samples. | M |
 | S7 | **Quote PDF and email.** | A quote template for the PDF. Each review Task also stores the drafted customer message (Task description, or a `Drafted_Message__c` long-text field), and a **Send question** quick action on the Task calls the service. The service sends the customer email through the standard `emailSimple` action (`/services/data/vXX.X/actions/standard/emailSimple`) from an org-wide address (quotes@perennialsfabrics.com), so every email is logged on the Contact. | M |
@@ -159,7 +159,7 @@ The order's `customer_note` is the order note. Billing name, company and email g
 | `s2q/workflow.py` | `workflow/` | Keep the logic and stages. Move state (`results`, `reviews`) to Postgres. `approve`/`reject` are triggered by the Salesforce callback. |
 | `s2q/extract.py` | `intake/` | Keep `CartIntake` (now reads the WooCommerce meta from §2) and the email extractors. The LLM catalog comes from a cached NetSuite item list. Keep catalog validation and the rules cross-check. |
 | `s2q/identity.py` | `identity/` | Same matching order (email → converted lead → domain + name → domain → company), implemented as SOQL queries. |
-| `s2q/qualify.py` | `policy/` | Unchanged policy table. Do Not Sell is read from `Account.Trade_Status__c`. |
+| `s2q/qualify.py` | `policy/` | Unchanged policy: known accounts decided from `Account.Trade_Status__c`; every new sender goes to a qualification Task. |
 | `s2q/pricing.py` | NetSuite RESTlet (N5) | Pricing moves into NetSuite. The Python stays as the test oracle. |
 | `s2q/emails.py` | `emails/` | Same templates; numbers only from NetSuite. Sent through Salesforce `emailSimple` (S7). |
 | `s2q/adapters/crm.py` `MockCRM` | `SalesforceCRM` | Same method names. `create_lead` is an upsert on `Source_Request_Id__c`; `convert_lead` calls the Apex REST (S2); `create_quote` uses a Composite request (Quote + QuoteLineItems); `create_task` creates a Task in the S4 queue. |

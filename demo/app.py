@@ -43,7 +43,8 @@ with st.sidebar:
             "touching it.\n"
             "5. **ERP → Inventory**: herringbone lot L-2403 now shows 30 yd reserved.\n"
             "6. **Old vs New**: Ruiz Interiors. Every automated step next to the manual one it replaces.\n"
-            "7. Try the edge cases: *the canvas* (sample history), *the linen* (one question), a 90 ft quote line "
+            "7. **CRM → Tasks**: Hannah (EML-026) is a new sender. Click **Qualify** and her quote is priced.\n"
+            "8. Try the edge cases: *the canvas* (sample history), *the linen* (one question), a 90 ft quote line "
             "with CFA requested on the website.")
     mode = st.radio("How emails are read", ["auto", "rules"], horizontal=True,
                     help="auto = Claude reads the email (rules run as a cross-check) when ANTHROPIC_API_KEY is set. "

@@ -18,6 +18,7 @@ There were two phases. First, Claude produced a rough draft from the brief and t
 |---|---|
 | **Keep every change tied to the brief's goal**: manual handoffs and back-and-forth with customers | Mid-project I re-centred the work on that sentence of the brief. It's why the later work went into drafted customer messages and the old-vs-new comparison rather than more UI polish. |
 | **Model the website as structured, like the real site** | The brief says "free text form". I had Claude check perennialsfabrics.com: samples are added per colorway from product pages, so a customer can't name the wrong fabric. AI is now used only for email. |
+| **Make qualification manual for new senders** | Trade status decides free samples and trade pricing, so for anyone without a CRM account a rep clicks **Qualify** or **Reject**, and the system offers no suggestion. Known accounts, Do Not Sell and spam stay automatic. The demo's seeded history records the rep's decisions in a labelled file. |
 | **Allow guest sample checkout** | The real site uses a trade login. Keeping guest checkout keeps lead qualification meaningful for the exercise; it's stated as an assumption. |
 | **Two front doors, one pipeline** | Website and email are the two intake channels; everything after intake is shared. I folded the email demo into the CRM's quotes@perennialsfabrics.com inbox instead of a separate mock mail app. |
 | **Extend the provided data with 6 edge cases** | So reviewers can see the harder cases tested, not just the provided rows. Two of them exposed real gaps: an ambiguous "the linen" could supersede an open quote and release its hold, and Claude reading a Gmail sender as a consumer bypassed her open trade review and auto-sent a list-price quote. Both fixed and tested. |
@@ -61,7 +62,7 @@ The first draft's own testing had already fixed:
   - A rules extractor always runs as a cross-check; disagreement sends the request to review.
   - API failures fall back to rules and are shown, not hidden.
   - Server-side refusal fallbacks are enabled.
-  - The model never sets prices, decides qualification, or writes customer-facing numbers.
+  - The model never sets prices, qualifies anyone (a rep qualifies every new sender), or writes customer-facing numbers.
 - **Why not more AI:** qualification and pricing must be explainable to sales ops and finance, and testable. Next candidates: classifying intent on the shared inbox, and polishing email tone with the numbers locked.
 
 ## What I'd do differently

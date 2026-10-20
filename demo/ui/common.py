@@ -16,6 +16,8 @@ import streamlit as st
 from s2q.data import DEFAULT_DATA
 from s2q.workflow import Workflow
 
+from demo.seed import seed
+
 PAGES: dict = {}  # name -> st.Page, filled in by app.py so pages can link to each other
 
 SYSTEM_STYLE = {
@@ -50,7 +52,7 @@ def wf() -> Workflow:
         if w.extractor.llm:
             readings = _seed_readings(mode, w.extractor.llm.model, os.path.getmtime(DEFAULT_DATA))
             w.extractor.use_readings(copy.deepcopy(readings))  # each session gets its own copy to work on
-        w.process_all()  # seeded history; emails sent during the demo still go to Claude live
+        seed(w)  # seeded history incl. the rep's qualification decisions; live emails still go to Claude
         st.session_state.wf = w
     return st.session_state.wf
 
@@ -106,6 +108,14 @@ def review_message(rv: dict):
 def review_buttons(w, rv: dict, where: str):
     """Stacked so they fit a narrow column. Question-only reviews get Send question / Dismiss."""
     key = f"{where}-{rv['id']}"
+    if rv["action"].startswith("qualify_"):  # new sender: a rep decides, no suggestion
+        if st.button("Qualify", key=f"a-{key}", type="primary", width="stretch", help=rv["proposed"]):
+            w.approve(rv["id"])
+            st.rerun()
+        if st.button("Reject", key=f"r-{key}", width="stretch"):
+            w.reject(rv["id"])
+            st.rerun()
+        return
     if rv["action"] in ("send_question", "none"):
         if rv.get("message") and st.button("Send question", key=f"q-{key}", type="primary", width="stretch"):
             w.approve(rv["id"])

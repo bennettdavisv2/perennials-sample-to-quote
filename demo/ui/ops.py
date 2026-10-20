@@ -12,7 +12,7 @@ SYSTEMS = {1: "Website → CRM", 2: "CRM", 3: "ERP + CRM", 4: "Website / email �
 STAGE_STATUS = {"done": "✅ Done", "review": "🟡 Needs review", "blocked": "⛔ Blocked", "skipped": "➖ Skipped",
                 "waiting": "⏳ Waiting", "n/a": "· Not applicable"}
 DECISION = {"qualified": "✅ Qualified trade customer", "non_trade": "💬 Not trade: nurture, no free samples",
-            "disqualified": "⛔ Disqualified", "spam": "⛔ Spam", "review": "🟡 Needs a person to decide"}
+            "disqualified": "⛔ Disqualified", "spam": "⛔ Spam", "review": "🟡 New sender: a rep qualifies"}
 
 
 def short_status(w, rid: str) -> str:

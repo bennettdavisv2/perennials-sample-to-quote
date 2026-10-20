@@ -2,13 +2,13 @@ import pytest
 
 from s2q.data import PricingConfig
 from s2q.pricing import price_line, to_yards
+from demo.seed import seed
 from s2q.workflow import Workflow
 
 
 @pytest.fixture(scope="module")
 def wf():
-    w = Workflow(mode="rules")
-    w.process_all()
+    w = seed(Workflow(mode="rules"))
     return w
 
 
@@ -42,10 +42,10 @@ def test_outcomes(wf):
     out = {k: v["outcome"] for k, v in wf.results.items()}
     assert out["WEB-007"] == "Spam filtered"
     assert out["WEB-005"].startswith("Disqualified")
-    assert out["WEB-002"].startswith("Non-trade")
-    assert out["WEB-009"].startswith("Non-trade")              # student
-    assert out["WEB-012"].startswith("Needs review")           # designer on gmail
-    assert out["WEB-013"].startswith("Needs review")           # 14 samples > 10
+    assert out["WEB-002"] == "Disqualified by rep"              # new sender: a rep rejected (homeowner)
+    assert out["WEB-009"] == "Disqualified by rep"              # new sender: a rep rejected (student)
+    assert out["WEB-012"] == "Needs review: qualification"      # new sender, not yet decided
+    assert out["WEB-013"] == "Needs review: over sample limit"  # qualified by a rep, then 14 samples > 10
     assert out["WEB-008"] == "Qualified, no eligible samples"  # discontinued
     assert out["EML-017"].endswith("sent")                     # clean quote goes straight out
 
@@ -97,8 +97,7 @@ def _email(w, base_id, new_id, message):
 
 def test_ambiguous_color_resolved_from_sample_history():
     # Priya sampled Canvas Solid White (WEB-006); "the canvas" could be White or Black.
-    w = Workflow(mode="rules")
-    w.process_all()
+    w = seed(Workflow(mode="rules"))
     res = w.process(_email(w, "EML-016", "EML-T1", "Need 40 yds of the canvas for the cabanas."))
     q = next(q for q in w.crm.quotes if q["id"] == res["quote_id"])
     assert [l["sku"] for l in q["lines"]] == ["PF-1010"]
@@ -108,8 +107,7 @@ def test_ambiguous_color_resolved_from_sample_history():
 
 
 def test_approve_review_places_samples():
-    w = Workflow(mode="rules")
-    w.process_all()
+    w = seed(Workflow(mode="rules"))
     rv = next(r for r in w.reviews if r["request"] == "WEB-012")
     w.approve(rv["id"])
     assert w.results["WEB-012"]["outcome"].startswith("Samples sent")
@@ -181,36 +179,41 @@ def test_web_requests_never_call_the_llm():
 
 def test_unknown_cart_sku_is_flagged_not_substituted():
     w = Workflow(mode="rules")
-    req = dict(next(r for r in w.inbox if r["id"] == "WEB-001"))
-    req["cart"] = {**req["cart"], "skus": ["PF-1001", "PF-9999"]}
+    req = dict(next(r for r in w.inbox if r["id"] == "WEB-004"))   # Mara: an existing trade customer
+    req["cart"] = {**req["cart"], "skus": ["PF-1006", "PF-9999"]}
     res = w.process(req)
-    assert [i["skus"] for i in res["extraction"]["items"]] == [["PF-1001"]]
+    assert [i["skus"] for i in res["extraction"]["items"]] == [["PF-1006"]]
     assert any("PF-9999" in f for f in res["flags"])
 
 
 
 
 # ---------- every review comes with a drafted customer message ----------
-def test_every_review_has_a_drafted_message(wf):
-    assert wf.reviews and all(rv["message"] and rv["message"]["body"] for rv in wf.reviews)
+def test_every_review_except_qualification_has_a_drafted_message(wf):
+    others = [rv for rv in wf.reviews if not rv["action"].startswith("qualify_")]
+    assert others and all(rv["message"] and rv["message"]["body"] for rv in others)
+    assert all(rv["message"] is None for rv in wf.reviews if rv["action"].startswith("qualify_"))  # a rep decides
 
 
-def test_gray_zone_lead_drafts_trade_verification_and_stays_open_until_decided():
-    w = Workflow(mode="rules")
-    w.process_all()
+def test_new_sender_is_qualified_by_a_rep_not_by_what_they_say():
+    """Hannah says she's a designer; that alone never qualifies her. A rep clicks Qualify or Reject."""
+    w = seed(Workflow(mode="rules"))
     rv = next(r for r in w.reviews if r["request"] == "WEB-012")
-    assert "resale certificate" in rv["message"]["body"] and "Velvet Plush - Garnet" in rv["message"]["body"]
-    w.ask(rv["id"])
-    assert rv["asked"] and rv["status"] == "Open"                        # the customer's reply decides it
-    assert any(e["action"] == "Email question" and e["request"] == "WEB-012" for e in w.log.events)
-    w.approve(rv["id"])                                                  # proof arrived: qualify and ship
+    assert rv["action"] == "qualify_and_sample" and rv["message"] is None
+    assert not any(a["name"].startswith("Hannah") for a in w.crm.accounts)  # no account, nothing shipped yet
+    w.approve(rv["id"])
     assert w.results["WEB-012"]["outcome"].startswith("Samples sent")
 
 
+def test_rejected_new_sender_gets_nothing():
+    w = seed(Workflow(mode="rules"))
+    lead = next(l for l in w.crm.leads if l["email"] == "jsmith1987@gmail.example")
+    assert lead["status"] == "Disqualified" and w.results["WEB-002"]["email"] is None
+
+
 def test_over_limit_drafts_pick_your_ten():
-    w = Workflow(mode="rules")
-    w.process_all()
-    body = next(r for r in w.reviews if r["request"] == "WEB-013")["message"]["body"]
+    w = seed(Workflow(mode="rules"))
+    body = next(r for r in w.reviews if r["request"] == "WEB-013" and r["action"] == "place_samples_capped")["message"]["body"]
     assert "up to 10" in body and "You picked 14" in body
 
 
@@ -231,7 +234,7 @@ def test_added_rows_outcomes(wf):
     assert out["EML-023"] == "Needs review: nothing priceable"   # color tie
     assert out["EML-024"] == "Needs review: nothing priceable"   # no quantity
     assert out["EML-025"].endswith("needs review")              # discontinued: remaining stock only
-    assert out["EML-026"] == "Needs review: unknown sender"      # trade status still under review
+    assert out["EML-026"] == "Needs review: qualification"      # still waiting for a rep (WEB-012)
 
 
 def test_web_quote_form_feet_and_cfa(wf):
@@ -256,8 +259,7 @@ def test_color_tie_asks_and_does_not_supersede_the_open_linen_quote(wf):
 
 
 def test_missing_quantity_question_is_sent_on_approve():
-    w = Workflow(mode="rules")
-    w.process_all()
+    w = seed(Workflow(mode="rules"))
     rv = next(r for r in w.reviews if r["request"] == "EML-024")
     assert rv["action"] == "send_question" and "How much Plaid Check" in rv["message"]["body"]
     w.approve(rv["id"])
@@ -270,18 +272,29 @@ def test_discontinued_quotes_only_remaining_stock(wf):
     assert q["lines"][0]["yards"] == 22 and q["lines"][0]["requested_yards"] == 30
 
 
-def test_pending_trade_review_is_not_requalified_by_a_new_message(wf):
+def test_pending_qualification_is_not_requalified_by_a_new_message(wf):
     r = wf.results["EML-026"]
-    assert "already under review" in r["qualification"]["reasons"][0]
-    assert "resale certificate" in r["email"]["body"]
-    assert not any(a["name"].startswith("Hannah Kim") for a in wf.crm.accounts)   # no consumer account created
+    assert "already waiting for a rep" in r["qualification"]["reasons"][0]
+    assert not any(a["name"].startswith("Hannah Kim") for a in wf.crm.accounts)   # no account until a rep decides
 
 
-def test_ai_and_rules_disagreeing_on_an_unknown_sender_goes_to_review():
+def test_qualify_then_quote():
+    """Approving a new sender's quote request qualifies them, then prices and quotes as usual."""
+    w = seed(Workflow(mode="rules"))
+    rv = next(r for r in w.reviews if r["request"] == "EML-026")
+    assert rv["action"] == "qualify_and_quote"
+    w.approve(rv["id"])
+    res = w.results["EML-026"]
+    q = next(q for q in w.crm.quotes if q["id"] == res["quote_id"])
+    assert [l["sku"] for l in q["lines"]] == ["PF-1005"] and q["lines"][0]["yards"] == 20
+
+
+def test_new_sender_always_goes_to_a_rep_whatever_the_message_says():
     from s2q import qualify
-    ext = {"segment_hint": "consumer", "segment_alt": "unclear", "signals": []}
-    d = qualify.decide(ext, {"account": None, "lead": None}, {"email": "x@gmail.example"})
-    assert d["decision"] == "review" and "AI read the sender" in d["reasons"][-1]
+    for seg in ("trade", "consumer", "student", "unclear"):
+        d = qualify.decide({"segment_hint": seg, "signals": []}, {"account": None, "lead": None},
+                           {"email": "x@studio.example"})
+        assert d["decision"] == "review"
 
 
 

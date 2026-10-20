@@ -10,11 +10,11 @@ Today the sample-to-quote journey crosses three systems that don't talk to each 
 flowchart TB
   subgraph S["Sample request"]
     direction LR
-    o1["Designer submits<br/>the web form"] --> o2["CSR reads the<br/>notification email"] --> o3["✍️ CSR retypes it<br/>into Salesforce"] --> o4["Rep qualifies<br/>the lead"] --> o5["✉️ Rep emails<br/>Order Ops"] --> o6["✍️ Ops retypes the<br/>order into NetSuite"]
+    o1["Customer submits<br/>the web form"] --> o2["CSR reads the<br/>notification email"] --> o3["✍️ CSR retypes it<br/>into Salesforce"] --> o4["Rep qualifies<br/>the lead"] --> o5["✉️ Rep emails<br/>Order Ops"] --> o6["✍️ Ops retypes the<br/>order into NetSuite"]
   end
   subgraph Q["Quote request, weeks later"]
     direction LR
-    o7["Designer emails<br/>for a quote"] --> o8["✉️ Rep: checking<br/>stock and price"] --> o9["Rep checks NetSuite<br/>and a spreadsheet"] --> o10["✍️ Rep retypes the<br/>quote, ✉️ sends PDF"] --> o11["✉️ Rep emails Ops:<br/>please hold"] --> o12["✍️ Ops keys a<br/>pending order"]
+    o7["Customer asks<br/>for a quote"] --> o8["✉️ Rep: checking<br/>stock and price"] --> o9["Rep checks NetSuite<br/>and a spreadsheet"] --> o10["✍️ Rep retypes the<br/>quote, ✉️ sends PDF"] --> o11["✉️ Rep emails Ops:<br/>please hold"] --> o12["✍️ Ops keys a<br/>pending order"]
   end
   S --> Q
   classDef pain fill:#fdecea,stroke:#d93025,color:#222
@@ -24,48 +24,63 @@ flowchart TB
 **New: one integration layer moves the data; a person steps in only for judgment.**
 
 ```mermaid
-flowchart TB
-  subgraph WEB["Website · WooCommerce"]
-    s1["Designer orders<br/>samples"]
+%%{init: {"flowchart": {"nodeSpacing": 10, "rankSpacing": 26, "padding": 6}, "themeVariables": {"fontSize": "12px"}}}%%
+flowchart LR
+  subgraph IN["Website · Email"]
+    a1["Sample order"]
+    a2["Quote form"]
+    a3["Quote email"]
   end
-  subgraph MAIL["Email · quotes@perennialsfabrics.com"]
-    q1["Designer emails<br/>for a quote"]
+  subgraph AWS["Integration service · AWS"]
+    ai["AI reads email<br/>+ rules check"]
+    q{"Known<br/>customer?"}
+    t["Trade<br/>customer"]
+    s{"Samples<br/>OK?"}
+    c{"Quote<br/>clear?"}
+    p["Price +<br/>dye lot"]
+    f{"Flags or<br/>> $20k?"}
   end
-  subgraph INT["Integration service · AWS"]
-    wh["Order received<br/>instantly"]
-    ai["AI reads<br/>the email"]
-    dec{{"Match, qualify,<br/>decide"}}
+  rq["🧑 Rep qualifies<br/>new sender"]
+  subgraph OUT["Salesforce · NetSuite · Customer"]
+    x1["Spam: dropped"]
+    x2["Do Not Sell: closed,<br/>owner notified"]
+    x4["Rejected:<br/>nothing sent"]
+    so["Sample order +<br/>confirmation"]
+    qa["One drafted question"]
+    ok["Quote sent +<br/>14-day hold"]
+    rv["🧑 Rep: approve ·<br/>ask · reject"]
   end
-  subgraph SF["Salesforce"]
-    sf1["Lead → Opportunity<br/>→ Quote"]
-    em["Customer email<br/>sent automatically"]
-    rv["🧑 Rep reviews a<br/>drafted email"]
-  end
-  subgraph NS["NetSuite"]
-    ns1["Sample order · Price<br/>· Fabric hold"]
-  end
-  s1 --> wh --> dec
-  q1 --> ai -- "no back-and-forth" --> dec
-  dec -- "no retyping" --> sf1
-  dec -- "no retyping" --> ns1
-  sf1 --> em
-  dec -. "only when unsure:<br/>people only for judgment" .-> rv
+  a3 --> ai --> q
+  a1 --> q
+  a2 --> q
+  q -- spam --> x1
+  q -- Do Not Sell --> x2
+  q -- new sender --> rq
+  rq -- reject --> x4
+  q -- "trade account" --> t
+  rq -- qualify --> t
+  t -- sample --> s
+  t -- quote --> c
+  s -- "up to 10" --> so
+  s -. "over 10" .-> rv
+  c -- "color tie / no qty" --> qa
+  c -- "yes (revision replaces old quote)" --> p --> f
+  f -- no --> ok
+  f -. yes .-> rv
   classDef auto fill:#e6f4ea,stroke:#1e8e3e,color:#222
   classDef human fill:#fff4e5,stroke:#e8a33d,color:#222
   classDef sys fill:#e8f0fe,stroke:#1a73e8,color:#222
-  class s1,q1,wh,ai,dec,em auto
-  class rv human
-  class sf1,ns1 sys
-  style WEB fill:#f8f9fb,stroke:#d0d5dd
-  style MAIL fill:#f8f9fb,stroke:#d0d5dd
-  style INT fill:#f8f9fb,stroke:#d0d5dd
-  style SF fill:#f8f9fb,stroke:#d0d5dd
-  style NS fill:#f8f9fb,stroke:#d0d5dd
+  class a1,a2,a3,ai,q,t,s,c,p,f auto
+  class so,ok,x1,x2,x4,qa sys
+  class rq,rv human
+  style IN fill:#f8f9fb,stroke:#d0d5dd
+  style AWS fill:#f8f9fb,stroke:#d0d5dd
+  style OUT fill:#f8f9fb,stroke:#d0d5dd
 ```
 
 🔴 retyping or an email between people · 🟢 automated · 🟠 a person decides · 🔵 system of record
 
-**Dana Ruiz's journey (two sample requests, a quote and a revision): about 35 manual steps and 84 retyped fields today → 2 rep approvals with the workflow.** The demo's Old vs New page shows it step by step; manual-side numbers are labelled estimates.
+**Dana Ruiz's journey (two sample requests, a quote and a revision): about 36 manual steps and 86 retyped fields today → 3 rep clicks with the workflow** (qualify her once, approve two flagged quotes). The demo's Old vs New page shows it step by step; manual-side numbers are labelled estimates.
 
 ### What changed, and how it's built
 
@@ -73,14 +88,14 @@ flowchart TB
 |---|---|---|
 | 1 | **No retyping web requests into the CRM.** A sample order lands as a Lead with the exact fabric already attached. | WooCommerce `order.created` webhook → orchestrator → Salesforce REST `POST /Lead` + Lead Convert API |
 | 2 | **No duplicate customers.** A second email address at the same firm is recognised as the same person. | SOQL on email, then domain + name; Salesforce Duplicate Rules as a backstop |
-| 3 | **Qualification in seconds.** Known trade accounts and clear cases are handled; reps see only the gray zone (e.g. "designer" on a Gmail address). | Policy table in the orchestrator; `Lead.Status` + `Qualification_Reason__c`; review Task assigned by Flow |
+| 3 | **A rep qualifies every new sender, in one click.** Known accounts are recognised automatically (trade → proceed, Do Not Sell → closed); anyone new waits for a rep's **Qualify** or **Reject**. What a sender says about themselves never qualifies them. | Identity match + `Account.Trade_Status__c`; new senders get a qualification Task (Qualify / Reject) in the review queue; `Lead.Status` + `Qualification_Reason__c` |
 | 4 | **Sample orders reach NetSuite on their own,** linked to the Salesforce opportunity. | NetSuite REST `salesOrder` (Sample form, $0 price level); customer `externalId` = Salesforce Account Id |
 | 5 | **Quote emails are read for the rep.** "80 yds of the navy stripe" becomes SKU + quantity. Colors are settled from the catalog and the customer's own samples before anyone is asked. | Gmail push / Microsoft Graph subscription on quotes@perennialsfabrics.com; Claude with structured outputs (email only), validated against the NetSuite item list; rules cross-check |
 | 6 | **No "let me check stock and price" replies.** Price and dye-lot availability come back in the same step. | NetSuite RESTlet (SuiteScript) for trade / volume / cut-fee rules; inventory by lot |
 | 7 | **Quote attached to the opportunity, customer email drafted.** Numbers come only from NetSuite, never from the AI. | Salesforce `Quote` + `QuoteLineItem`, PDF via `ContentVersion`; email template sent from Salesforce |
 | 8 | **Fabric held from one dye lot,** released automatically after 14 days. A split across lots asks for a CFA (cutting for approval). | NetSuite sales order with lot-level inventory detail; scheduled SuiteScript releases expired holds; CFA sales order form |
 | 9 | **Revisions don't double-hold.** "Make that 90 yds" releases the old hold and re-quotes as v2. | Quote versioning in Salesforce; close old NetSuite SO lines before re-allocating |
-| 10 | **People only where judgment matters:** big quotes, split lots, shortages, backorders, gray-zone leads. | Salesforce Task / Approval Process (e.g. over $20k); approve runs the held action |
+| 10 | **People only where judgment matters:** qualifying new senders, big quotes, split lots, shortages, backorders. | Salesforce Task / Approval Process (e.g. over $20k); approve runs the held action |
 | 11 | **Every step is traceable.** | Audit log per request, inbound message / order id as the idempotency key; retries + dead-letter queue |
 
 ## What's in this repo
@@ -127,26 +142,28 @@ One app, five pages, sharing one in-memory workflow. It starts **seeded**: the 2
 4. **CRM → Inbox**: send *Dana: 30 yds of the herringbone*. It's priced, held and sent with no one touching it.
 5. **ERP → Inventory**: lot L-2403 now shows 30 yd reserved.
 6. **Old vs New → Ruiz Interiors**.
-7. Edge cases: *the canvas* (settled by sample history), *the linen* (one drafted question), a 90 ft quote line with CFA requested on the website.
+7. **CRM → Tasks**: Hannah Kim (EML-026) is a new sender: click **Qualify**, and her quote is priced and drafted.
+8. Edge cases: *the canvas* (settled by sample history), *the linen* (one drafted question), a 90 ft quote line with CFA requested on the website, or check out as the new designer persona (waits for a rep).
 
 ## Interesting rows
 
 | Request | What happens | Why |
 |---|---|---|
+| WEB-001 | Dana is a new sender, so a rep qualifies her (seeded decision); then samples are sent and her opportunity is created | Qualification is manual for anyone without a CRM account |
 | WEB-003 | Dana Ruiz from `d.ruiz@` is matched to the same contact, and the email is added as an alternate | Same domain + same name; prevents a duplicate lead/opportunity |
 | WEB-005 | Disqualified, no samples or price list, account owner notified | CRM account is *Do Not Sell* (competitor) |
 | WEB-007 | Spam is filtered and nothing is written to CRM | Keeps the CRM clean |
-| WEB-008 | Qualified, but Sunset Ikat is excluded from samples; the email offers the 22 yd remaining | Discontinued: no new samples |
-| WEB-002, WEB-009 | Non-trade nurture email, no free samples | Consumer / student |
-| WEB-012 | Goes to review with a drafted email asking for a resale certificate or business website; the rep can approve, send it, or reject | Says "designer" but uses a personal Gmail address |
-| WEB-013 | Goes to review with a drafted "which 10 first?" email listing all 14 | 14 SKUs in the cart, max 10 |
+| WEB-008 | A rep qualifies Kevin; Sunset Ikat is excluded from samples, and the email offers the 22 yd remaining | Discontinued: no new samples |
+| WEB-002, WEB-009 | A rep rejects them (seeded decisions): no samples, nothing sent | Homeowner / student; new senders |
+| WEB-012 | Waits for a rep to **Qualify** or **Reject** (left open in the demo to show the manual step) | New sender ("designer" on a Gmail address) |
+| WEB-013 | A rep qualifies Jordan; the 14-sample cart then goes to review with a drafted "which 10 first?" email | Qualifying a sender doesn't approve an oversized order |
 | EML-014 | Quote with 20% (trade + volume) on 80 yd stripe; held across **two dye lots** goes to review, needs a CFA from each lot | No single lot covers 80 yd |
 | EML-015 | 12 m becomes 13.25 yd; "green velvet" is quoted as Velvet Plush Moss (the only green), named in the email, no confirmation hold; out of stock, so not reserved and goes to review | Unit conversion + unique color match + zero stock |
 | EML-016 | $34.9k quote, 120 yd short on Canvas White, goes to manager review | Shortage + split lot + high value + need-by date |
 | EML-017 | Clean quote with the $25 cut fee is **sent automatically** and held | No flags |
 | EML-018 | Budgetary quote, no hold placed | Customer said pricing only |
 | EML-019 | Backordered (ETA 11/15) vs. "ASAP": priced, not held, goes to review | Can't reserve what isn't there |
-| EML-020 | Student is quoted list price + cut fee; becomes a consumer account | Non-trade pricing |
+| EML-020 | The student asks for a price; a rep rejects again (seeded decision) | A rejected sender is reviewed again on a new request |
 | EML-021 | **Revises** Q-0101 to v2: the old hold is released and a new hold placed (87 of 90 yd available) | Follow-up on the same job |
 | *Rows we added (see "We extended the test data" below)* | | |
 | WEB-014 | Website quote form: 90 **feet** becomes 30 yd, a hold on one dye lot, and a **CFA** cutting order from that lot; review only to confirm the date needed | The real site's Request A Quote fields |
@@ -154,11 +171,11 @@ One app, five pages, sharing one in-memory workflow. It starts **seeded**: the 2
 | EML-023 | "the linen" from Mara, who sampled both colors: one drafted question with stock per color. Her open linen quote is **not** superseded | Real color tie; also caught a bug (an ambiguous line used to trigger a revision and release the hold) |
 | EML-024 | "price the plaid" with no quantity: one drafted question | Missing quantity |
 | EML-025 | 30 yd of discontinued Sunset Ikat: quoted and held for the 22 yd that remain | Discontinued rule |
-| EML-026 | Hannah (Gmail, trade check still open) asks for a price: joins the existing review with a trade-verification email | Caught a gap: Claude read her as a consumer and auto-sent a list-price quote |
+| EML-026 | Hannah asks for a price while her qualification is still open: it waits for the rep. Clicking **Qualify** qualifies her and prices, holds and drafts the quote | Caught a gap that led to manual qualification: Claude read her as a consumer and auto-sent a list-price quote |
 
 ## We extended the test data
 
-The 21 requests Bertram provided all pass, but they don't exercise several cases the workflow has to handle, so we **added 6 rows to the workbook's Inbound Requests tab** (WEB-014, EML-022 to EML-026). Each is marked in a new **Notes** column and in the Read Me tab. The original file is unchanged in `case-study-prompt/` for comparison. The added rows found two real issues, both now fixed and tested: an ambiguous color could supersede an open quote and release its hold, and Claude's reading of a sender could skip an open trade review. Every row runs under both the rules and Claude; outcomes match except EML-022, where they are meant to differ.
+The 21 requests Bertram provided all pass, but they don't exercise several cases the workflow has to handle, so we **added 6 rows to the workbook's Inbound Requests tab** (WEB-014, EML-022 to EML-026). Each is marked in a new **Notes** column and in the Read Me tab. The original file is unchanged in `case-study-prompt/` for comparison. The added rows found two real issues, both now fixed and tested: an ambiguous color could supersede an open quote and release its hold, and Claude's reading of a sender could skip an open trade review (one reason qualification is now manual for new senders). Every row runs under both the rules and Claude; outcomes match except EML-022, where they are meant to differ.
 
 ## Layout
 
@@ -173,6 +190,7 @@ s2q/                        Shared core (tested; ships to production unchanged)
 demo/                       Walkthrough app (not shipped)
   app.py, ui/               Streamlit: Website, CRM, ERP, Old vs New, Ops console
   site.py, baseline.py      Checkout / quotes@perennialsfabrics.com entry points; today's manual steps (estimates)
+  seed.py                   Seeds the history, applying the rep's qualification decisions (data/seed_decisions.json)
   data/                     Workbook (21 original + 6 added rows) and web carts
   README.md                 How to run it and how to film the walkthrough
 production-handoff/         For engineering (skeletons and specs, not run against real systems)
@@ -190,8 +208,8 @@ Ambiguities in the brief and data, and the call I made on each:
 2. **Cut fee** is $25 per line under 5 yd, for everyone.
 3. **Meters and feet are converted to yards and rounded up to the nearest 1/4 yd** (12 m becomes 13.25 yd; 10 ft becomes 3.5 yd). The site's quote form offers Yards / Feet / Meters.
 4. **Samples are memo swatches stocked separately from bolt yardage.** Out-of-stock or backordered fabrics can still be sampled (the email notes the yardage status). Discontinued fabrics cannot.
-5. **Free samples are for qualified trade only.** Consumers and students get a friendly nurture email with a paid-sample/retail path, not a rejection.
-6. **A designer on a personal email address goes to human review**, not auto-qualify or auto-reject.
+5. **Free samples and trade pricing are for qualified trade only.** Existing consumer accounts get a nurture email with a paid-sample / retail path; a rep handles anyone else who isn't trade.
+6. **Qualification is manual for new senders.** Anyone without a CRM account waits for a rep's **Qualify** or **Reject**, with no suggestion from the system: what a sender says about themselves never qualifies them. Spam, existing trade accounts, existing consumer accounts and Do Not Sell are still handled automatically. The demo's seeded history includes the rep's decisions (`demo/data/seed_decisions.json`); Hannah Kim's are left open to show the step live.
 7. **Do Not Sell** accounts are disqualified: no samples, no price list, and the account owner is notified.
 8. **Spam never reaches the CRM.**
 9. For existing contacts, a lead is still created (for source attribution) and **converted into the existing contact**, as Salesforce lead convert does.
@@ -206,6 +224,6 @@ Ambiguities in the brief and data, and the call I made on each:
 18. **Website requests are structured, like the real site.** The brief describes a free-text form, but on perennialsfabrics.com a sample is added to the cart from a product page (one colorway = one variant SKU, plus a Project Type), and "Request A Quote" sends Length + unit, Date Needed, CFA Waived / Requested and Project Name. So a web customer cannot name a fabric that doesn't exist, and AI extraction is only used on email. Each WEB row was converted once into its cart (`demo/data/web_cart_submissions.json`); the original message is kept as the order note, and "everything" / "all your solids" / "every color of X" became the SKUs those imply. A cart SKU missing from the ERP (e.g. a stale cart) is flagged, never substituted.
 19. **Guest sample checkout is allowed.** The real site steers samples through a trade account (resale number), which would move qualification to registration. Allowing guest checkout keeps lead qualification (stage 2) meaningful for this exercise.
 20. **CFA (cutting for approval)** is the term for the customer approving a dye lot. A split across lots asks for a CFA from each lot; "CFA Requested" on the web quote form creates a CFA cutting order from the held lot.
-21. **Every review comes with a drafted customer message,** so a rep's next step is one click instead of a thread: a trade-verification request, a "which 10 first?" pick list, one clarifying question (color tie or missing quantity), or the quote itself. Sending a question keeps a qualification / sample review open until the customer replies.
+21. **Every review comes with a drafted customer message,** so a rep's next step is one click instead of a thread: a "which 10 first?" pick list, one clarifying question (color tie or missing quantity), or the quote itself. Sending the pick list keeps the sample review open until the customer replies. Qualification reviews are the exception: the rep decides with Qualify / Reject.
 22. **Colors are resolved before anyone is asked.** If an email's description fits exactly one catalog SKU ("green velvet" = Moss), it is quoted and named in the email, with no hold. If several colorways fit ("the canvas"), the customer's own sample orders decide it. Only if that still leaves more than one does the system draft a single question listing the colorways and current stock.
 23. The sheet's *Type* column is used for sample vs. quote routing. In production the LLM would classify intent for the shared inbox.

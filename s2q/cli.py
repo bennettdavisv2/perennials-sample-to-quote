@@ -3,6 +3,7 @@
     python -m s2q.cli               # auto: Claude if ANTHROPIC_API_KEY is set, else rules
     python -m s2q.cli --rules       # force offline rules
     python -m s2q.cli --approve-all # also approve every review item (simulates a rep)
+    python -m s2q.cli --no-decisions  # don't apply the rep's recorded qualification decisions
     python -m s2q.cli --verbose     # include stage details and email drafts
 """
 from __future__ import annotations
@@ -20,11 +21,18 @@ def main():
     ap.add_argument("--approve-all", action="store_true")
     ap.add_argument("--verbose", "-v", action="store_true")
     ap.add_argument("--data")
+    ap.add_argument("--no-decisions", action="store_true",
+                    help="skip demo/data/seed_decisions.json (new senders then wait for a rep)")
     a = ap.parse_args()
 
     wf = Workflow(a.data, mode="rules" if a.rules else "auto") if a.data else Workflow(mode="rules" if a.rules else "auto")
     print(f"Extractor: {wf.extractor.status}\n")
-    wf.process_all()
+    if a.no_decisions:
+        wf.process_all()
+    else:
+        # Qualification is manual for new senders; replay the rep's recorded decisions in order.
+        from demo.seed import seed
+        seed(wf)
     if a.approve_all:
         for rv in list(wf.reviews):
             if rv["status"] == "Open":
