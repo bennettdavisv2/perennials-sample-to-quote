@@ -11,8 +11,7 @@ from .common import md, money, open_reviews, reasons, review_buttons, review_mes
 SYSTEMS = {1: "Website → CRM", 2: "CRM", 3: "ERP + CRM", 4: "Website / email → CRM", 5: "ERP → CRM", 6: "ERP"}
 STAGE_STATUS = {"done": "✅ Done", "review": "🟡 Needs review", "blocked": "⛔ Blocked", "skipped": "➖ Skipped",
                 "waiting": "⏳ Waiting", "n/a": "· Not applicable"}
-DECISION = {"qualified": "✅ Qualified trade customer", "non_trade": "💬 Not trade: nurture, no free samples",
-            "disqualified": "⛔ Disqualified", "spam": "⛔ Spam", "review": "🟡 New sender: a rep qualifies"}
+DECISION = {"qualified": "✅ Qualified trade customer", "disqualified": "⛔ Disqualified", "spam": "⛔ Spam", "review": "🟡 New sender: a rep qualifies"}
 
 
 def short_status(w, rid: str) -> str:
@@ -23,8 +22,6 @@ def short_status(w, rid: str) -> str:
         return "🟡 Needs review"
     if res["outcome"].startswith(("Spam", "Disqualified", "Blocked", "Quote rejected")):
         return "⛔ Stopped"
-    if res["outcome"].startswith("Non-trade"):
-        return "💬 Nurture"
     return "✅ Done"
 
 
@@ -61,7 +58,7 @@ def render_detail(w, rid: str):
     if not res:
         return
     ext, s = res["extraction"], short_status(w, rid)
-    banner = {"✅": st.success, "🟡": st.warning, "⛔": st.error, "💬": st.info, "⚪": st.info}[s[0]]
+    banner = {"✅": st.success, "🟡": st.warning, "⛔": st.error, "⚪": st.info}[s[0]]
     banner(md(f"**Result:** {res['outcome']}"))
 
     st.markdown("##### What happened")

@@ -92,10 +92,10 @@ The order's `customer_note` is the order note. Billing name, company and email g
 | `Lead.Qualification_Reason__c` | Long Text | Why the lead was qualified or not: account status for known accounts, or the rep's decision for new senders |
 | `Lead.Project_Type__c` | Picklist: Residential, Hospitality | From the cart |
 | `Lead.Project_Name__c` | Text(255) | Becomes the opportunity name |
-| `Lead.Status` | add **Needs Review**, **Nurture – Non-trade**, **Disqualified** | Qualification outcomes |
+| `Lead.Status` | add **Needs Review**, **Disqualified** | Qualification outcomes |
 | `Contact.Alternate_Email__c` | Email (or a related list if more than one) | Same person on a second address (the WEB-003 case) |
 | `Account.NetSuite_Customer_Id__c` | Text, External Id | Link to the NetSuite customer |
-| `Account.Trade_Status__c` | Picklist: Trade, Consumer, Do Not Sell | Drives qualification. *Verify* where Do Not Sell is kept today |
+| `Account.Trade_Status__c` | Picklist: Trade, Do Not Sell | Drives qualification. *Verify* where Do Not Sell is kept today |
 | `Opportunity.Sample_Order_Ids__c` | Long Text, or a child object `Sample_Order__c` | NetSuite sample order numbers |
 | `Quote.Status` | add **Pending Rep Review**, **Superseded**, **Rejected** | Review and revisions |
 | `Quote.Version__c` | Number | v1, v2… (a revision supersedes the earlier version) |

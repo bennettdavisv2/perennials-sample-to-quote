@@ -135,13 +135,6 @@ class Workflow:
                                  req["id"], "Account owner")
             res["outcome"] = "Disqualified (Do Not Sell)"
             return
-        if d == "non_trade":
-            self.crm.set_lead_status(lead, "Nurture - Non-trade", "; ".join(q["reasons"]))
-            self._stage(res, 2, "done", "Non-trade: " + "; ".join(q["reasons"]))
-            self._stage(res, 3, "skipped", "Free samples are for qualified trade leads")
-            res["email"] = emails.non_trade_reply(req["name"], ext["wildcard"])
-            res["outcome"] = "Non-trade: nurture email, no free samples"
-            return
         if d == "review":
             self.crm.set_lead_status(lead, "Needs Review", "; ".join(q["reasons"]))
             self._stage(res, 2, "review", "; ".join(q["reasons"]))
@@ -246,19 +239,17 @@ class Workflow:
             return
 
         account, contact = ident["account"], ident["contact"]
+        if q["decision"] == "review":  # not a known trade customer: a rep qualifies first, contact or not
+            lead = ident["lead"] or self.crm.create_lead(req, ext["segment_hint"], ext.get("project", ""))
+            self.crm.set_lead_status(lead, "Needs Review", "; ".join(q["reasons"]))
+            self._stage(res, 4, "review", "A rep qualifies before quoting")
+            self._review(res, "Lead qualification", "; ".join(q["reasons"]),
+                         "Qualify as trade and send the quote", "qualify_and_quote", {"lead_id": lead["id"]})
+            res["outcome"] = "Needs review: qualification"
+            return
         if contact is None:
             lead = ident["lead"] or self.crm.create_lead(req, ext["segment_hint"], ext.get("project", ""))
-            if q["decision"] == "review":
-                self.crm.set_lead_status(lead, "Needs Review", "; ".join(q["reasons"]))
-                self._stage(res, 4, "review", "New sender: a rep qualifies before quoting")
-                self._review(res, "Lead qualification", "; ".join(q["reasons"]),
-                             "Qualify as trade and send the quote", "qualify_and_quote", {"lead_id": lead["id"]})
-                res["outcome"] = "Needs review: qualification"
-                return
-            if q["decision"] == "non_trade":
-                new_acct = {"name": f"{req['name']} (consumer)", "type": "Consumer / Retail"}
-            else:
-                new_acct = {"name": req["company"] or req["name"], "type": f"Trade – {ext.get('trade_subtype') or 'Other'}"}
+            new_acct = {"name": req["company"] or req["name"], "type": f"Trade – {ext.get('trade_subtype') or 'Other'}"}
             account, contact = self.crm.convert_lead(lead, account, None, new_account=new_acct)
         cust = self.erp.upsert_customer(account)
 
@@ -283,7 +274,7 @@ class Workflow:
             revision_of = prior
             if prior.get("reservation_id"):
                 self.erp.release_reservation(prior["reservation_id"], f"superseded by revision of {prior['number']}")
-        is_trade = str(account["type"]).startswith("Trade")
+        is_trade = True  # only qualified trade customers reach pricing; non-trade buyers are handled outside the system
         flags = list(res["flags"])
         flags += [n for n in res["extract_notes"] if "disagree" in n]
         flags += [f"Cart line {s} is not an item in the ERP: not quoted" for s in ext.get("invalid_skus", [])]

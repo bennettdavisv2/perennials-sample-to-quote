@@ -334,3 +334,16 @@ def test_do_not_sell_quote_request_notifies_account_owner():
                      "message": "Please quote 40 yds of Canvas Solid White."})
     assert res["outcome"] == "Blocked (disqualified)" and "quote_id" not in res
     assert any(t["owner"] == "Account owner" and "EML-T9" in t["subject"] for t in w.crm.tasks)
+
+
+def test_existing_non_trade_account_goes_to_a_rep_even_with_a_contact():
+    """No consumer path any more: a known contact on a non-trade account is qualified by a rep, never quoted directly."""
+    w = Workflow(mode="rules")
+    w.crm.accounts.append({"id": "ACC-0900", "name": "Chris Lee", "type": "Consumer / Retail", "status": "Customer"})
+    w.crm.contacts.append({"id": "CON-0900", "account_id": "ACC-0900", "name": "Chris Lee",
+                           "email": "chris.lee@gmail.example", "alt_emails": []})
+    base = next(r for r in w.inbox if r["id"] == "EML-017")
+    res = w.process({**base, "id": "EML-T8", "name": "Chris Lee", "company": "", "email": "chris.lee@gmail.example",
+                     "message": "Could I get 5 yds of the herringbone?"})
+    assert res["outcome"] == "Needs review: qualification" and "quote_id" not in res
+    assert "isn't a trade account" in res["qualification"]["reasons"][0]

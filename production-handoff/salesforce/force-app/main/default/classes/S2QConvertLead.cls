@@ -12,7 +12,7 @@ global with sharing class S2QConvertLead {
         public Id leadId;
         public Id accountId;        // optional: convert into this existing Account
         public Id contactId;        // optional: merge into this existing Contact (e.g. a second email address)
-        public String accountType;  // for a new Account: 'Trade – Interior Designer', 'Consumer / Retail', ...
+        public String accountType;  // for a new Account: 'Trade – Interior Designer', 'Trade – Architect', ...
     }
 
     @HttpPost

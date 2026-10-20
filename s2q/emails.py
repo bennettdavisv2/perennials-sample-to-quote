@@ -22,20 +22,6 @@ def sample_confirmation(name, skus_desc, excluded, notes, opp_name):
     return {"subject": subj, "body": "\n".join(body)}
 
 
-def non_trade_reply(name, wildcard):
-    body = [f"Hi {_first(name)},", "",
-            "Thanks for your interest in Perennials! Complimentary memo samples are reserved for our design-trade "
-            "partners (designers, architects, upholsterers and hospitality specifiers).",
-            "",
-            "You can still order individual samples on our website, or we can point you to a showroom or retailer near you.",
-            ]
-    if wildcard:
-        body += ["", "Tell us a bit about your project (outdoor or indoor, colors you like) and we'll suggest a short list."]
-    body += ["", "If you're working with a designer or are in the trade yourself, reply here and we'll set you up.",
-             "", "Best,", "Perennials Customer Care"]
-    return {"subject": "Your Perennials sample request", "body": "\n".join(body)}
-
-
 def quote_email(name, quote, lines_desc, notes, valid_until, budgetary, trade=True):
     kind = "budgetary quote" if budgetary else "quote"
     body = [f"Hi {_first(name)},", "", f"Here is your {kind} {quote['id']}:", ""]

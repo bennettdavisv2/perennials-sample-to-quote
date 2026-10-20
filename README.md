@@ -151,11 +151,11 @@ tests/                      Core, demo and handoff-interface tests
 
 Ambiguities in the brief and data, and the call I made on each:
 
-1. **Volume tiers are trade-only and additive.** "On top of trade discount" means 15% + 5% = 20% off list, not compounded (19.25%). Non-trade pays list price at any quantity.
+1. **Volume tiers are trade-only and additive.** "On top of trade discount" means 15% + 5% = 20% off list, not compounded (19.25%). Non-trade pricing (list price) stays in the pricing function, but the workflow only prices for qualified trade customers.
 2. **Cut fee** is $25 per line under 5 yd, for everyone.
 3. **Meters and feet are converted to yards and rounded up to the nearest 1/4 yd** (12 m becomes 13.25 yd; 10 ft becomes 3.5 yd). The site's quote form offers Yards / Feet / Meters.
 4. **Samples are memo swatches stocked separately from bolt yardage.** Out-of-stock or backordered fabrics can still be sampled (the email notes the yardage status). Discontinued fabrics cannot.
-5. **Free samples and trade pricing are for qualified trade only.** Existing consumer accounts get a nurture email with a paid-sample / retail path; a rep handles anyone else who isn't trade.
+5. **Free samples and trade pricing are for qualified trade only.** Anyone who isn't trade (a homeowner, a student, an existing non-trade account) goes to a rep, who can reject them; non-trade buyers are then handled outside this system.
 6. **Qualification is manual for new senders.** Anyone without a CRM account waits for a rep's **Qualify** or **Reject**, with no suggestion from the system: what a sender says about themselves never qualifies them. Spam, existing trade accounts, existing consumer accounts and Do Not Sell are still handled automatically. The demo's seeded history includes the rep's decisions (`demo/data/seed_decisions.json`); Hannah Kim's are left open to show the step live.
 7. **Do Not Sell** accounts are disqualified: no samples, no price list, and the account owner is notified.
 8. **Spam never reaches the CRM.**

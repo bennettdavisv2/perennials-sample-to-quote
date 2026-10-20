@@ -70,7 +70,6 @@ box("int", 2, "Known customer?", "decision", w=150)
 box("int", 3, "AI reads the email", "auto", w=150)
 box("int", 4, "Spam dropped", "result", w=150)
 box("crm_a", 4, "Closed, owner told", "result", w=130)
-box("crm_b", 4, "Nurture email;\nquotes at list price", "result", w=140)
 box("crm_a", 5, "Rep qualifies", "person", w=130)
 box("crm_b", 5, "Rejected", "result", w=130)
 box("crm_a", 6, "Lead → Opportunity", "auto", w=130)
@@ -91,9 +90,8 @@ arrow([(170, R[1]), (305, R[1]), (305, R[2] - h)])                         # sam
 arrow([(170, R[2]), (230, R[2])])                                          # quote form -> known customer
 arrow([(170, R[3]), (230, R[3])])                                          # quote email -> AI
 arrow([(305, R[3] - h), (305, R[2] + h)])                                  # AI -> known customer
-arrow([(380, R[2] - 14), (665, R[2] - 14), (665, R[4] - h)], "consumer account", (671, R[3] + 4))
 arrow([(380, R[2] - 7), (495, R[2] - 7), (495, R[4] - h)], "Do Not Sell", (501, R[3] + 4))
-arrow([(380, R[2]), (410, R[2]), (410, R[5]), (430, R[5])], "new sender", (394, R[5] - 4), "end")
+arrow([(380, R[2]), (410, R[2]), (410, R[5]), (430, R[5])], "new or non-trade", (394, R[5] - 4), "end")
 arrow([(380, R[2] + 7), (400, R[2] + 7), (400, R[6] - 8), (430, R[6] - 8)], "trade account", (394, R[6] - 12), "end")
 arrow([(380, R[2] + 14), (390, R[2] + 14), (390, R[4]), (380, R[4])], "spam", (386, R[4] - h - 4), "end")
 arrow([(560, R[5]), (600, R[5])], "reject", (580, R[5] - 6), "middle")
