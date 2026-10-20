@@ -283,3 +283,32 @@ def test_ai_and_rules_disagreeing_on_an_unknown_sender_goes_to_review():
     d = qualify.decide(ext, {"account": None, "lead": None}, {"email": "x@gmail.example"})
     assert d["decision"] == "review" and "AI read the sender" in d["reasons"][-1]
 
+
+
+def test_llm_readings_are_reused_not_refetched():
+    """The demo reads the seeded emails once per server run; a new session reuses them with no LLM calls."""
+    calls = []
+
+    class CountingLLM:
+        model = "fake"
+
+        def __init__(self, rules):
+            self.rules = rules
+
+        def extract(self, req):
+            calls.append(req["id"])
+            return {**self.rules.extract(req), "method": "llm:fake"}
+
+    first = Workflow(mode="rules")
+    first.extractor.llm = CountingLLM(first.extractor.rules)
+    readings = first.extractor.prefetch(first.pending())
+    emails = [r["id"] for r in first.inbox if not r.get("cart")]
+    assert sorted(calls) == sorted(emails) and set(readings) == set(emails)
+
+    calls.clear()
+    second = Workflow(mode="rules")
+    second.extractor.llm = CountingLLM(second.extractor.rules)
+    second.extractor.use_readings(readings)
+    second.process_all()
+    assert calls == []                                            # nothing re-read
+    assert all(second.results[e]["extraction"]["method"] == "llm:fake" for e in emails)

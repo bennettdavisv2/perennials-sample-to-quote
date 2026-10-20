@@ -7,9 +7,13 @@ the CRM and ERP have history and Dana Ruiz is a known customer.
 """
 from __future__ import annotations
 
+import copy
+import os
+
 import pandas as pd
 import streamlit as st
 
+from s2q.data import DEFAULT_DATA
 from s2q.workflow import Workflow
 
 PAGES: dict = {}  # name -> st.Page, filled in by app.py so pages can link to each other
@@ -31,10 +35,22 @@ def money(x) -> str:
     return f"${x:,.2f}"
 
 
+@st.cache_resource(show_spinner="Reading the seeded emails with Claude (once per app run)...")
+def _seed_readings(mode: str, model: str, data_mtime: float) -> dict:
+    """Claude's readings of the seeded emails. They never change, so read them once per server run instead of
+    on every reload / Reset (which took ~11 s and 13 API calls each time). Failed calls aren't cached."""
+    w = Workflow(mode=mode)
+    return w.extractor.prefetch(w.pending())
+
+
 def wf() -> Workflow:
     if "wf" not in st.session_state:
-        w = Workflow(mode=st.session_state.get("mode", "auto"))
-        w.process_all()  # seeded history
+        mode = st.session_state.get("mode", "auto")
+        w = Workflow(mode=mode)
+        if w.extractor.llm:
+            readings = _seed_readings(mode, w.extractor.llm.model, os.path.getmtime(DEFAULT_DATA))
+            w.extractor.use_readings(copy.deepcopy(readings))  # each session gets its own copy to work on
+        w.process_all()  # seeded history; emails sent during the demo still go to Claude live
         st.session_state.wf = w
     return st.session_state.wf
 

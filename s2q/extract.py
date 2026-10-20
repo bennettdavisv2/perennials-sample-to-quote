@@ -366,11 +366,19 @@ class Extractor:
         elif mode in ("auto", "llm"):
             self.status = "rules only (no ANTHROPIC_API_KEY)"
 
-    def prefetch(self, reqs: list[dict], workers: int = 8):
-        """Read many emails with the LLM in parallel (each call is independent); results are used by extract()."""
+    def prefetch(self, reqs: list[dict], workers: int = 16) -> dict[str, dict]:
+        """Read many emails with the LLM in parallel (each call is independent); results are used by extract().
+        Returns the successful readings, so a caller can reuse them (see use_readings)."""
         todo = [r for r in reqs if self.llm and not r.get("cart") and r["id"] not in self._prefetched]
-        if not todo:
-            return
+        if todo:
+            self._fetch(todo, workers)
+        return {k: v for k, v in self._prefetched.items() if not isinstance(v, Exception)}
+
+    def use_readings(self, readings: dict[str, dict]):
+        """Reuse LLM readings made earlier (e.g. the demo's seeded emails, read once per server run)."""
+        self._prefetched.update(readings)
+
+    def _fetch(self, todo: list[dict], workers: int):
         from concurrent.futures import ThreadPoolExecutor
 
         def one(r):
@@ -378,7 +386,7 @@ class Extractor:
                 return r["id"], self.llm.extract(r)
             except Exception as e:  # surfaced (and logged as a fallback note) when the request is processed
                 return r["id"], e
-        with ThreadPoolExecutor(max_workers=workers) as pool:
+        with ThreadPoolExecutor(max_workers=min(workers, len(todo))) as pool:
             self._prefetched.update(pool.map(one, todo))
 
     def extract(self, req: dict) -> tuple[dict, list[str]]:
