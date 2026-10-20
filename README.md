@@ -4,7 +4,7 @@ Today the sample-to-quote journey crosses three systems that don't talk to each 
 
 ## Old flow vs new flow
 
-Both diagrams use the same numbered steps: step 3 today is the same step as step 3 with the workflow. The top row is the sample request (the brief's stages 1–3); the bottom row is the quote request (stages 4–6).
+Both diagrams use the same step numbers, so step 3 today is step 3 with the workflow. Steps 1–6 are the sample request (the brief's stages 1–3); steps 7–12 are the quote request (stages 4–6).
 
 **Today: people carry the data between systems.**
 
@@ -23,30 +23,31 @@ flowchart TB
   class o3,o5,o6,o8,o10,o11,o12 pain
 ```
 
-**New: the integration layer does every step; a person steps in only when the workflow isn't sure.**
+**New: one integration layer moves the data; a person steps in only for judgment.** Numbers match the steps above.
 
 ```mermaid
 flowchart TB
-  subgraph S["Sample request · stages 1–3"]
-    direction LR
-    n1["1 · Designer adds samples<br/>to the cart<br/><i>exact SKU + Project Type</i>"] --> n2["2 · Order arrives<br/>instantly<br/><i>WooCommerce webhook</i>"] --> n3["3 · Lead created,<br/>duplicates matched<br/><i>Salesforce REST + SOQL</i>"] --> n4["4 · Qualified<br/>in seconds<br/><i>policy table</i>"] --> n5["5 · Converted, linked<br/>to the opportunity<br/><i>Apex lead convert</i>"] --> n6["6 · Sample order in NetSuite,<br/>confirmation email<br/><i>NetSuite REST</i>"]
-    n4 -.-> h4["🧑 Gray zone only:<br/>rep task with a<br/>drafted email"]
-  end
-  subgraph Q["Quote request · stages 4–6, weeks later"]
-    direction LR
-    n7["7 · Designer emails<br/>quotes@perennialsfabrics.com<br/>or uses the quote form<br/><i>Gmail push / webhook</i>"] --> n8["8 · AI reads the email<br/>no holding reply<br/><i>Claude, checked vs catalog</i>"] --> n9["9 · Price + dye-lot stock<br/>in one step<br/><i>NetSuite RESTlet</i>"] --> n10["10 · Quote on the opportunity,<br/>email drafted<br/><i>Salesforce Composite API</i>"] --> n11["11 · Hold on one dye lot,<br/>released after 14 days<br/><i>NetSuite order + script</i>"] --> n12["12 · Quote sent<br/>automatically<br/><i>Salesforce email</i>"]
-    n10 -.-> h10["🧑 Flags or > $20k only:<br/>rep approves the<br/>drafted quote"]
-  end
-  S --> Q
+  s1["<b>Samples · stages 1–3</b><br/>1 · Designer adds samples to the cart<br/>exact SKU + Project Type"] --> wh["2 · Order arrives instantly<br/>WooCommerce webhook order.created"]
+  wh --> orch
+  q1["<b>Quotes · stages 4–6, weeks later</b><br/>7 · Designer emails quotes@perennialsfabrics.com<br/>or uses the website quote form"] -- "Gmail push" --> ai["8 · AI reads the email<br/>Claude, checked against NetSuite items"]
+  q1 -. "quote form: already structured" .-> orch
+  ai --> orch{{"Orchestrator service<br/>AWS Lambda · idempotent · audit log"}}
+  orch -- "3–5 · SOQL + policy table" --> dq["3 · Lead created, duplicates matched<br/>4 · Qualified in seconds<br/>5 · Converted, opportunity linked"]
+  dq -- "REST + Apex lead convert" --> sf[("Salesforce<br/>Lead · Account · Opportunity · Quote")]
+  orch -- "6 · sample order<br/>11 · hold on one dye lot" --> ns[("NetSuite<br/>sample order · dye-lot hold · CFA")]
+  orch -- "9 · RESTlet" --> pr["9 · Price + dye-lot stock<br/>trade + volume + cut fee"]
+  pr -- "10 · quote on the opportunity" --> sf
+  orch -- "only when unsure:<br/>Flow / Approval Process" --> rv["🧑 Rep task in Salesforce<br/>gray-zone lead, flags, over $20k<br/>with a drafted email"]
+  orch -- "6 · 12" --> em["Customer email drafted<br/>from NetSuite numbers<br/>6 sample confirmation · 12 quote"]
   classDef auto fill:#e6f4ea,stroke:#1e8e3e,color:#222
   classDef human fill:#fff4e5,stroke:#e8a33d,color:#222
-  class n1,n2,n3,n4,n5,n6,n7,n8,n9,n10,n11,n12 auto
-  class h4,h10 human
+  classDef sys fill:#e8f0fe,stroke:#1a73e8,color:#222
+  class s1,wh,q1,ai,orch,dq,pr,em auto
+  class rv human
+  class sf,ns sys
 ```
 
-Every green step runs in the integration service (AWS), calling the Salesforce and NetSuite APIs. The table below says how each is built, and [`production-handoff/`](production-handoff/) has the building blocks.
-
-🔴 retyping or an email between people · 🟢 automated · 🟠 a person decides
+🔴 retyping or an email between people · 🟢 automated · 🟠 a person decides · 🔵 system of record
 
 ### What changed, and how it's built
 
