@@ -325,3 +325,12 @@ def test_llm_readings_are_reused_not_refetched():
     second.process_all()
     assert calls == []                                            # nothing re-read
     assert all(second.results[e]["extraction"]["method"] == "llm:fake" for e in emails)
+
+
+def test_do_not_sell_quote_request_notifies_account_owner():
+    w = Workflow(mode="rules")
+    base = next(r for r in w.inbox if r["id"] == "WEB-005")          # Fabric Depot Outlet: Do Not Sell
+    res = w.process({**base, "id": "EML-T9", "type": "Quote request", "channel": "Email",
+                     "message": "Please quote 40 yds of Canvas Solid White."})
+    assert res["outcome"] == "Blocked (disqualified)" and "quote_id" not in res
+    assert any(t["owner"] == "Account owner" and "EML-T9" in t["subject"] for t in w.crm.tasks)

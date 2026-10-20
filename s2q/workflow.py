@@ -238,6 +238,10 @@ class Workflow:
 
         if q["decision"] in ("spam", "disqualified"):
             self._stage(res, 4, "blocked", "; ".join(q["reasons"]))
+            if q["decision"] == "disqualified":  # same policy as samples: no quote, the account owner is told
+                res["flags"].append("Do Not Sell account asked for a quote: account owner notified")
+                self.crm.create_task(f"FYI: {ident['account']['name']} (Do Not Sell) requested a quote via {req['id']}",
+                                     req["id"], "Account owner")
             res["outcome"] = f"Blocked ({q['decision']})"
             return
 

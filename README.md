@@ -10,75 +10,22 @@ Today the sample-to-quote journey crosses three systems that don't talk to each 
 flowchart TB
   subgraph S["Sample request"]
     direction LR
-    o1["Customer submits<br/>the web form"] --> o2["CSR reads the<br/>notification email"] --> o3["✍️ CSR retypes it<br/>into Salesforce"] --> o4["Rep qualifies<br/>the lead"] --> o5["✉️ Rep emails<br/>Order Ops"] --> o6["✍️ Ops retypes the<br/>order into NetSuite"]
+    o1["Customer submits<br/>the web form"] --> o2["CSR reads the<br/>notification email"] --> o3["CSR retypes it<br/>into Salesforce"] --> o4["Rep qualifies<br/>the lead"] --> o5["Rep emails<br/>Order Ops"] --> o6["Ops retypes the<br/>order into NetSuite"]
   end
   subgraph Q["Quote request, weeks later"]
     direction LR
-    o7["Customer asks<br/>for a quote"] --> o8["✉️ Rep: checking<br/>stock and price"] --> o9["Rep checks NetSuite<br/>and a spreadsheet"] --> o10["✍️ Rep retypes the<br/>quote, ✉️ sends PDF"] --> o11["✉️ Rep emails Ops:<br/>please hold"] --> o12["✍️ Ops keys a<br/>pending order"]
+    o7["Customer asks<br/>for a quote"] --> o8["Rep: checking<br/>stock and price"] --> o9["Rep checks NetSuite<br/>and a spreadsheet"] --> o10["Rep retypes the<br/>quote, sends PDF"] --> o11["Rep emails Ops:<br/>please hold"] --> o12["Ops keys a<br/>pending order"]
   end
   S --> Q
   classDef pain fill:#fdecea,stroke:#d93025,color:#222
   class o3,o5,o6,o8,o10,o11,o12 pain
 ```
 
+Red steps are where someone retypes data or emails another team.
+
 **New: one integration layer moves the data; a person steps in only for judgment.**
 
-```mermaid
-%%{init: {"flowchart": {"nodeSpacing": 10, "rankSpacing": 26, "padding": 6}, "themeVariables": {"fontSize": "12px"}}}%%
-flowchart LR
-  subgraph IN["Website · Email"]
-    a1["Sample order"]
-    a2["Quote form"]
-    a3["Quote email"]
-  end
-  subgraph AWS["Integration service · AWS"]
-    ai["AI reads email<br/>+ rules check"]
-    q{"Known<br/>customer?"}
-    t["Trade<br/>customer"]
-    s{"Samples<br/>OK?"}
-    c{"Quote<br/>clear?"}
-    p["Price +<br/>dye lot"]
-    f{"Flags or<br/>> $20k?"}
-  end
-  rq["🧑 Rep qualifies<br/>new sender"]
-  subgraph OUT["Salesforce · NetSuite · Customer"]
-    x1["Spam: dropped"]
-    x2["Do Not Sell: closed,<br/>owner notified"]
-    x4["Rejected:<br/>nothing sent"]
-    so["Sample order +<br/>confirmation"]
-    qa["One drafted question"]
-    ok["Quote sent +<br/>14-day hold"]
-    rv["🧑 Rep: approve ·<br/>ask · reject"]
-  end
-  a3 --> ai --> q
-  a1 --> q
-  a2 --> q
-  q -- spam --> x1
-  q -- Do Not Sell --> x2
-  q -- new sender --> rq
-  rq -- reject --> x4
-  q -- "trade account" --> t
-  rq -- qualify --> t
-  t -- sample --> s
-  t -- quote --> c
-  s -- "up to 10" --> so
-  s -. "over 10" .-> rv
-  c -- "color tie / no qty" --> qa
-  c -- "yes (revision replaces old quote)" --> p --> f
-  f -- no --> ok
-  f -. yes .-> rv
-  classDef auto fill:#e6f4ea,stroke:#1e8e3e,color:#222
-  classDef human fill:#fff4e5,stroke:#e8a33d,color:#222
-  classDef sys fill:#e8f0fe,stroke:#1a73e8,color:#222
-  class a1,a2,a3,ai,q,t,s,c,p,f auto
-  class so,ok,x1,x2,x4,qa sys
-  class rq,rv human
-  style IN fill:#f8f9fb,stroke:#d0d5dd
-  style AWS fill:#f8f9fb,stroke:#d0d5dd
-  style OUT fill:#f8f9fb,stroke:#d0d5dd
-```
-
-🔴 retyping or an email between people · 🟢 automated · 🟠 a person decides · 🔵 system of record
+![New flow: each step in the system where it runs](docs/diagrams/new-flow.svg)
 
 **Dana Ruiz's journey (two sample requests, a quote and a revision): about 36 manual steps and 86 retyped fields today → 3 rep clicks with the workflow** (qualify her once, approve two flagged quotes). The demo's Old vs New page shows it step by step; manual-side numbers are labelled estimates.
 
@@ -129,11 +76,11 @@ One app, five pages, sharing one in-memory workflow. It starts **seeded**: the 2
 
 | Page | What it is |
 |---|---|
-| 🛍 **Website** | Mock storefront modelled on the real site's flow (not its branding): product page with colorways, **Add Sample** + Project Type, **Request A Quote** (Length in Yards / Feet / Meters, Date Needed, CFA, Project Name), cart, guest checkout. Checkout runs the workflow live. |
-| ☁️ **CRM** | Salesforce-style: the **quotes@perennialsfabrics.com inbox** (send an email as a customer), leads, accounts, **opportunity record pages** with sample orders and quotes, and the rep's task queue. |
-| 🏭 **ERP** | NetSuite-style: inventory by dye lot, sales orders (samples, holds, CFA cuttings), customers keyed to CRM accounts. |
-| ⚖️ **Old vs New** | Pick a customer journey: every automated action next to the manual step it replaces, with totals. |
-| 🛠 **Ops console** | Each request's full story, the review queue, and the integration log (every call with the real API it maps to). |
+| **Website** | Mock storefront modelled on the real site's flow (not its branding): product page with colorways, **Add Sample** + Project Type, **Request A Quote** (Length in Yards / Feet / Meters, Date Needed, CFA, Project Name), cart, guest checkout. Checkout runs the workflow live. |
+| **CRM** | Salesforce-style: the **quotes@perennialsfabrics.com inbox** (send an email as a customer), leads, accounts, **opportunity record pages** with sample orders and quotes, and the rep's task queue. |
+| **ERP** | NetSuite-style: inventory by dye lot, sales orders (samples, holds, CFA cuttings), customers keyed to CRM accounts. |
+| **Old vs New** | Pick a customer journey: every automated action next to the manual step it replaces, with totals. |
+| **Ops console** | Each request's full story, the review queue, and the integration log (every call with the real API it maps to). |
 
 **Demo script** (also in the app's sidebar):
 1. **Website**: open *Tidal Herringbone*, Add Sample, check out as **Dana Ruiz**.

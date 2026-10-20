@@ -15,11 +15,11 @@ The app starts **seeded**: the 27 workbook requests (21 original + 6 edge cases 
 
 | Page | What it is |
 |---|---|
-| 🛍 **Website** | Storefront modelled on the real site's flow: colorway, Add Sample + Project Type, Request A Quote (Length in yards / feet / meters, Date Needed, CFA, Project Name), cart, guest checkout |
-| ☁️ **CRM** | Salesforce-style: quotes@perennialsfabrics.com inbox, leads, accounts, opportunity record pages, the rep's task queue with drafted messages |
-| 🏭 **ERP** | NetSuite-style: inventory by dye lot, sales orders (samples, holds, CFA cuttings), customers |
-| ⚖️ **Old vs New** | One customer's journey: each automated step next to the manual step it replaces |
-| 🛠 **Ops console** | Each request's full story, the review queue, the integration log |
+| **Website** | Storefront modelled on the real site's flow: colorway, Add Sample + Project Type, Request A Quote (Length in yards / feet / meters, Date Needed, CFA, Project Name), cart, guest checkout |
+| **CRM** | Salesforce-style: quotes@perennialsfabrics.com inbox, leads, accounts, opportunity record pages, the rep's task queue with drafted messages |
+| **ERP** | NetSuite-style: inventory by dye lot, sales orders (samples, holds, CFA cuttings), customers |
+| **Old vs New** | One customer's journey: each automated step next to the manual step it replaces |
+| **Ops console** | Each request's full story, the review queue, the integration log |
 
 | File | What it is |
 |---|---|
