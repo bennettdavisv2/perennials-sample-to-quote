@@ -204,7 +204,7 @@ The order's `customer_note` is the order note. Billing name, company and email g
 
 **Testing**
 - Use a Salesforce sandbox, a NetSuite sandbox and a WooCommerce staging site, with the service deployed per environment.
-- **Acceptance suite:** the 27 workbook rows (21 original + 6 edge cases we added) with their expected outcomes (README "Interesting rows", `tests/`), replayed against the sandboxes. Add the live demo cases: a sample attached to an existing opportunity; a clean email quote sent automatically; "the canvas" settled by sample history.
+- **Acceptance suite:** the 27 workbook rows (21 original + 6 edge cases we added) with their expected outcomes (`tests/`), replayed against the sandboxes. Add the live demo cases: a sample attached to an existing opportunity; a clean email quote sent automatically; "the canvas" settled by sample history.
 
 **Rollout**
 

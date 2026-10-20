@@ -2,58 +2,26 @@
 
 Today the sample-to-quote journey crosses three systems that don't talk to each other: the website, the CRM (Salesforce) and the ERP (NetSuite). People retype the same information from one into the next and email customers back and forth. This PoC puts one integration layer between them. Every request goes through all six stages (lead, qualification, sample order + opportunity, quote request, price quote, inventory reservation) with no retyping, and a person steps in only when a judgment call is needed.
 
-## Old flow vs new flow
-
-**Today: people carry the data between systems.**
-
-```mermaid
-flowchart TB
-  subgraph S["Sample request"]
-    direction LR
-    o1["Customer submits<br/>the web form"] --> o2["CSR reads the<br/>notification email"] --> o3["CSR retypes it<br/>into Salesforce"] --> o4["Rep qualifies<br/>the lead"] --> o5["Rep emails<br/>Order Ops"] --> o6["Ops retypes the<br/>order into NetSuite"]
-  end
-  subgraph Q["Quote request, weeks later"]
-    direction LR
-    o7["Customer asks<br/>for a quote"] --> o8["Rep: checking<br/>stock and price"] --> o9["Rep checks NetSuite<br/>and a spreadsheet"] --> o10["Rep retypes the<br/>quote, sends PDF"] --> o11["Rep emails Ops:<br/>please hold"] --> o12["Ops keys a<br/>pending order"]
-  end
-  S --> Q
-  classDef pain fill:#fdecea,stroke:#d93025,color:#222
-  class o3,o5,o6,o8,o10,o11,o12 pain
-```
-
-Red steps are where someone retypes data or emails another team.
-
-**New: one integration layer moves the data; a person steps in only for judgment.**
+## How it works
 
 ![New flow: each step in the system where it runs](docs/diagrams/new-flow.svg)
 
-**Dana Ruiz's journey (two sample requests, a quote and a revision): about 36 manual steps and 86 retyped fields today → 3 rep clicks with the workflow** (qualify her once, approve two flagged quotes). The demo's Old vs New page shows it step by step; manual-side numbers are labelled estimates.
-
-### What changed, and how it's built
-
-| # | For the business | For engineering: where it runs |
-|---|---|---|
-| 1 | **No retyping web requests into the CRM.** A sample order lands as a Lead with the exact fabric already attached. | WooCommerce `order.created` webhook → orchestrator → Salesforce REST `POST /Lead` + Lead Convert API |
-| 2 | **No duplicate customers.** A second email address at the same firm is recognised as the same person. | SOQL on email, then domain + name; Salesforce Duplicate Rules as a backstop |
-| 3 | **A rep qualifies every new sender, in one click.** Known accounts are recognised automatically (trade → proceed, Do Not Sell → closed); anyone new waits for a rep's **Qualify** or **Reject**. What a sender says about themselves never qualifies them. | Identity match + `Account.Trade_Status__c`; new senders get a qualification Task (Qualify / Reject) in the review queue; `Lead.Status` + `Qualification_Reason__c` |
-| 4 | **Sample orders reach NetSuite on their own,** linked to the Salesforce opportunity. | NetSuite REST `salesOrder` (Sample form, $0 price level); customer `externalId` = Salesforce Account Id |
-| 5 | **Quote emails are read for the rep.** "80 yds of the navy stripe" becomes SKU + quantity. Colors are settled from the catalog and the customer's own samples before anyone is asked. | Gmail push / Microsoft Graph subscription on quotes@perennialsfabrics.com; Claude with structured outputs (email only), validated against the NetSuite item list; rules cross-check |
-| 6 | **No "let me check stock and price" replies.** Price and dye-lot availability come back in the same step. | NetSuite RESTlet (SuiteScript) for trade / volume / cut-fee rules; inventory by lot |
-| 7 | **Quote attached to the opportunity, customer email drafted.** Numbers come only from NetSuite, never from the AI. | Salesforce `Quote` + `QuoteLineItem`, PDF via `ContentVersion`; email template sent from Salesforce |
-| 8 | **Fabric held from one dye lot,** released automatically after 14 days. A split across lots asks for a CFA (cutting for approval). | NetSuite sales order with lot-level inventory detail; scheduled SuiteScript releases expired holds; CFA sales order form |
-| 9 | **Revisions don't double-hold.** "Make that 90 yds" releases the old hold and re-quotes as v2. | Quote versioning in Salesforce; close old NetSuite SO lines before re-allocating |
-| 10 | **People only where judgment matters:** qualifying new senders, big quotes, split lots, shortages, backorders. | Salesforce Task / Approval Process (e.g. over $20k); approve runs the held action |
-| 11 | **Every step is traceable.** | Audit log per request, inbound message / order id as the idempotency key; retries + dead-letter queue |
+**Dana Ruiz's journey (two sample requests, a quote and a revision): about 36 manual steps and 86 retyped fields today → 3 rep clicks with the workflow** (qualify her once, approve two flagged quotes). Manual-side numbers are labelled estimates.
 
 ## What's in this repo
 
-| Folder | For | What's inside |
-|---|---|---|
-| [`s2q/`](s2q/) | Both | **The shared core:** the workflow, intake (cart + email), dedupe, qualification, pricing, email templates, and the CRM/ERP adapter interface with in-memory mocks. Tested; production runs it unchanged. |
-| [`demo/`](demo/) | Reviewers | The walkthrough app (storefront, CRM, ERP, Old vs New, ops console), its data (the workbook + 6 added edge cases) and a filming guide |
-| [`production-handoff/`](production-handoff/) | Engineering | The system-by-system build list ([README](production-handoff/README.md)) plus **skeleton building blocks**: WooCommerce plugin and webhook, the AWS integration service (handlers, worker, Salesforce/NetSuite adapters, schema, SAM template), Salesforce Apex and metadata, NetSuite SuiteScripts, Gmail watch setup |
-| [`docs/`](docs/) | Reviewers | Design note and AI usage notes |
-| [`case-study-prompt/`](case-study-prompt/) | | Bertram's original brief and workbook, unchanged |
+| Folder | What's inside |
+|---|---|
+| [`s2q/`](s2q/) | The shared core: workflow, intake (website cart + email), dedupe, qualification, pricing, email templates, and the CRM / ERP adapter interface with in-memory mocks. Tested; production runs it unchanged. |
+| [`demo/`](demo/) | The walkthrough app (storefront, CRM, ERP, Old vs New, ops console), its data (the workbook plus 6 added edge cases) and a filming guide. |
+| [`production-handoff/`](production-handoff/) | The [system-by-system build list](production-handoff/README.md) for engineering, with owners, sizes, rollout and open questions. The building blocks are below; they're skeletons and specs, not yet run against real systems. |
+| [`production-handoff/woocommerce/`](production-handoff/woocommerce/) | Plugin that saves the product-page fields onto the order, and the order webhook setup. |
+| [`production-handoff/integration-service/`](production-handoff/integration-service/) | The AWS service: webhook, Gmail-push and Salesforce-callback handlers, the queue worker, Salesforce / NetSuite adapters, database schema and deployment template. |
+| [`production-handoff/salesforce/`](production-handoff/salesforce/) | Apex lead-convert endpoint, field metadata, and specs for the review queue, approval process and callback Flow. |
+| [`production-handoff/netsuite/`](production-handoff/netsuite/) | Pricing RESTlet, daily hold-expiry script, and the pricing-rule record. |
+| [`production-handoff/gmail/`](production-handoff/gmail/) | The watch on quotes@perennialsfabrics.com that pushes new mail to the service. |
+| [`docs/`](docs/) | Design note, AI usage notes, and the diagram source. |
+| [`case-study-prompt/`](case-study-prompt/) | Bertram's original brief and workbook, unchanged. |
 
 ## Run it (under 5 minutes)
 
@@ -65,87 +33,27 @@ pip install -r requirements.txt
 
 streamlit run demo/app.py     # demo at http://localhost:8501/
 python -m s2q.cli -v          # or headless: every workbook request, stage by stage, with email drafts
-pytest -q                     # 40 tests
+pytest -q                     # 44 tests
 ```
 
 **Optional: use Claude for email extraction.** Run `export ANTHROPIC_API_KEY=sk-...` before starting. If the key is in a `.env` one folder up, load it with `set -a; source ../.env; set +a`. Set `S2Q_MODEL` to override the model (default `claude-opus-5-5`, low effort). Without a key, the deterministic rules extractor is used and everything works the same. With a key, Claude reads each email and the rules run as a cross-check; if they disagree, the request goes to review. Website carts are structured, so they never go to the LLM.
 
-## The demo
-
-One app, five pages, sharing one in-memory workflow. It starts **seeded**: the 27 workbook requests (21 original + 6 edge cases we added) are already processed, so the CRM and ERP have history.
-
-| Page | What it is |
-|---|---|
-| **Website** | Mock storefront modelled on the real site's flow (not its branding): product page with colorways, **Add Sample** + Project Type, **Request A Quote** (Length in Yards / Feet / Meters, Date Needed, CFA, Project Name), cart, guest checkout. Checkout runs the workflow live. |
-| **CRM** | Salesforce-style: the **quotes@perennialsfabrics.com inbox** (send an email as a customer), leads, accounts, **opportunity record pages** with sample orders and quotes, and the rep's task queue. |
-| **ERP** | NetSuite-style: inventory by dye lot, sales orders (samples, holds, CFA cuttings), customers keyed to CRM accounts. |
-| **Old vs New** | Pick a customer journey: every automated action next to the manual step it replaces, with totals. |
-| **Ops console** | Each request's full story, the review queue, and the integration log (every call with the real API it maps to). |
-
-**Demo script** (also in the app's sidebar):
-1. **Website**: open *Tidal Herringbone*, Add Sample, check out as **Dana Ruiz**.
-2. **CRM → Opportunities → Ruiz Interiors**: the new sample order is on her existing opportunity. No duplicate lead.
-3. **ERP → Sales orders**: the sample order, keyed to her CRM account.
-4. **CRM → Inbox**: send *Dana: 30 yds of the herringbone*. It's priced, held and sent with no one touching it.
-5. **ERP → Inventory**: lot L-2403 now shows 30 yd reserved.
-6. **Old vs New → Ruiz Interiors**.
-7. **CRM → Tasks**: Hannah Kim (EML-026) is a new sender: click **Qualify**, and her quote is priced and drafted.
-8. Edge cases: *the canvas* (settled by sample history), *the linen* (one drafted question), a 90 ft quote line with CFA requested on the website, or check out as the new designer persona (waits for a rep).
-
-## Interesting rows
-
-| Request | What happens | Why |
-|---|---|---|
-| WEB-001 | Dana is a new sender, so a rep qualifies her (seeded decision); then samples are sent and her opportunity is created | Qualification is manual for anyone without a CRM account |
-| WEB-003 | Dana Ruiz from `d.ruiz@` is matched to the same contact, and the email is added as an alternate | Same domain + same name; prevents a duplicate lead/opportunity |
-| WEB-005 | Disqualified, no samples or price list, account owner notified | CRM account is *Do Not Sell* (competitor) |
-| WEB-007 | Spam is filtered and nothing is written to CRM | Keeps the CRM clean |
-| WEB-008 | A rep qualifies Kevin; Sunset Ikat is excluded from samples, and the email offers the 22 yd remaining | Discontinued: no new samples |
-| WEB-002, WEB-009 | A rep rejects them (seeded decisions): no samples, nothing sent | Homeowner / student; new senders |
-| WEB-012 | Waits for a rep to **Qualify** or **Reject** (left open in the demo to show the manual step) | New sender ("designer" on a Gmail address) |
-| WEB-013 | A rep qualifies Jordan; the 14-sample cart then goes to review with a drafted "which 10 first?" email | Qualifying a sender doesn't approve an oversized order |
-| EML-014 | Quote with 20% (trade + volume) on 80 yd stripe; held across **two dye lots** goes to review, needs a CFA from each lot | No single lot covers 80 yd |
-| EML-015 | 12 m becomes 13.25 yd; "green velvet" is quoted as Velvet Plush Moss (the only green), named in the email, no confirmation hold; out of stock, so not reserved and goes to review | Unit conversion + unique color match + zero stock |
-| EML-016 | $34.9k quote, 120 yd short on Canvas White, goes to manager review | Shortage + split lot + high value + need-by date |
-| EML-017 | Clean quote with the $25 cut fee is **sent automatically** and held | No flags |
-| EML-018 | Budgetary quote, no hold placed | Customer said pricing only |
-| EML-019 | Backordered (ETA 11/15) vs. "ASAP": priced, not held, goes to review | Can't reserve what isn't there |
-| EML-020 | The student asks for a price; a rep rejects again (seeded decision) | A rejected sender is reviewed again on a new request |
-| EML-021 | **Revises** Q-0101 to v2: the old hold is released and a new hold placed (87 of 90 yd available) | Follow-up on the same job |
-| *Rows we added (see "We extended the test data" below)* | | |
-| WEB-014 | Website quote form: 90 **feet** becomes 30 yd, a hold on one dye lot, and a **CFA** cutting order from that lot; review only to confirm the date needed | The real site's Request A Quote fields |
-| EML-022 | "sixty yards" in words. Rules can't read it, so they draft a question; Claude prices it, but the two disagree, so it goes to review | Shows what the AI adds, and the disagreement guard |
-| EML-023 | "the linen" from Mara, who sampled both colors: one drafted question with stock per color. Her open linen quote is **not** superseded | Real color tie; also caught a bug (an ambiguous line used to trigger a revision and release the hold) |
-| EML-024 | "price the plaid" with no quantity: one drafted question | Missing quantity |
-| EML-025 | 30 yd of discontinued Sunset Ikat: quoted and held for the 22 yd that remain | Discontinued rule |
-| EML-026 | Hannah asks for a price while her qualification is still open: it waits for the rep. Clicking **Qualify** qualifies her and prices, holds and drafts the quote | Caught a gap that led to manual qualification: Claude read her as a consumer and auto-sent a list-price quote |
-
 ## We extended the test data
 
-The 21 requests Bertram provided all pass, but they don't exercise several cases the workflow has to handle, so we **added 6 rows to the workbook's Inbound Requests tab** (WEB-014, EML-022 to EML-026). Each is marked in a new **Notes** column and in the Read Me tab. The original file is unchanged in `case-study-prompt/` for comparison. The added rows found two real issues, both now fixed and tested: an ambiguous color could supersede an open quote and release its hold, and Claude's reading of a sender could skip an open trade review (one reason qualification is now manual for new senders). Every row runs under both the rules and Claude; outcomes match except EML-022, where they are meant to differ.
+The 21 requests Bertram provided all pass, but they don't exercise several cases the workflow has to handle, so we added **6 rows** to the workbook's Inbound Requests tab. Each is marked in a new Notes column and in the Read Me tab; the original file is unchanged in `case-study-prompt/`.
 
-## Layout
+| Row | Edge case |
+|---|---|
+| WEB-014 | Website quote form: 90 feet becomes 30 yd, CFA requested, a date needed |
+| EML-022 | Quantities written as words ("sixty yards"): the rules can't read them, Claude can, and the disagreement goes to review |
+| EML-023 | A real color tie ("the linen", both colors sampled) while a linen quote is open: one drafted question, and the open quote is left alone |
+| EML-024 | No quantity given: one drafted question |
+| EML-025 | Discontinued fabric: only the 22 yd that remain are quoted |
+| EML-026 | A quote from a sender still waiting to be qualified: it waits for the rep |
 
-```
-s2q/                        Shared core (tested; ships to production unchanged)
-  workflow.py               Orchestrator: the six stages, review queue, approve / reject / ask
-  extract.py                Website cart -> request (CartIntake); email -> request (Claude structured outputs, or rules)
-  identity.py, qualify.py   Dedupe against the CRM; qualification policy table
-  pricing.py, emails.py     Pricing math; customer email templates (numbers only from pricing)
-  adapters/                 CRM / ERP interface, with in-memory MockCRM / MockERP
-  data.py, cli.py           Workbook loader; headless run
-demo/                       Walkthrough app (not shipped)
-  app.py, ui/               Streamlit: Website, CRM, ERP, Old vs New, Ops console
-  site.py, baseline.py      Checkout / quotes@perennialsfabrics.com entry points; today's manual steps (estimates)
-  seed.py                   Seeds the history, applying the rep's qualification decisions (data/seed_decisions.json)
-  data/                     Workbook (21 original + 6 added rows) and web carts
-  README.md                 How to run it and how to film the walkthrough
-production-handoff/         For engineering (skeletons and specs, not run against real systems)
-  README.md                 System-by-system build list, rollout, open questions
-  woocommerce/  integration-service/  salesforce/  netsuite/  gmail/
-docs/                       DESIGN.md, AI_USAGE.md
-tests/                      Core, demo and handoff-interface tests
-```
+Two of these exposed real bugs, both fixed: an ambiguous color could replace an open quote and release its hold, and Claude's reading of a sender could skip an open review.
+
+**What the 44 tests cover:** the pricing math (trade and volume discounts, cut fee, meters and feet); the outcome of all 27 rows end to end; dedupe, spam, revisions, holds and backorders; color resolution and the drafted customer messages; manual qualification (qualify, reject, qualify-then-quote, Do Not Sell); website carts and Claude's output validation and fallback; the demo's entry points and old-vs-new numbers; and that the production adapters match the mocks' interface.
 
 ## Assumptions
 
