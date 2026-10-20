@@ -4,41 +4,38 @@ Today the sample-to-quote journey crosses three systems that don't talk to each 
 
 ## Old flow vs new flow
 
-Both diagrams use the same step numbers, so step 3 today is step 3 with the workflow. Steps 1–6 are the sample request (the brief's stages 1–3); steps 7–12 are the quote request (stages 4–6).
-
 **Today: people carry the data between systems.**
 
 ```mermaid
 flowchart TB
-  subgraph S["Sample request · stages 1–3"]
+  subgraph S["Sample request"]
     direction LR
-    o1["1 · Designer submits<br/>the web form"] --> o2["2 · CSR reads the<br/>notification email"] --> o3["3 · ✍️ CSR retypes it<br/>into a Salesforce Lead"] --> o4["4 · Rep checks website /<br/>resale cert, qualifies"] --> o5["5 · ✉️ Rep emails<br/>Order Ops"] --> o6["6 · ✍️ Ops retypes the<br/>order into NetSuite"]
+    o1["Designer submits<br/>the web form"] --> o2["CSR reads the<br/>notification email"] --> o3["✍️ CSR retypes it<br/>into Salesforce"] --> o4["Rep qualifies<br/>the lead"] --> o5["✉️ Rep emails<br/>Order Ops"] --> o6["✍️ Ops retypes the<br/>order into NetSuite"]
   end
-  subgraph Q["Quote request · stages 4–6, weeks later"]
+  subgraph Q["Quote request, weeks later"]
     direction LR
-    o7["7 · Designer emails<br/>for a quote"] --> o8["8 · ✉️ Rep: checking<br/>stock and price"] --> o9["9 · Rep checks NetSuite +<br/>pricing spreadsheet"] --> o10["10 · ✍️ Rep retypes quote into<br/>Salesforce, ✉️ sends PDF"] --> o11["11 · ✉️ Rep emails Ops:<br/>please hold"] --> o12["12 · ✍️ Ops picks a dye lot,<br/>keys a pending order"]
+    o7["Designer emails<br/>for a quote"] --> o8["✉️ Rep: checking<br/>stock and price"] --> o9["Rep checks NetSuite<br/>and a spreadsheet"] --> o10["✍️ Rep retypes the<br/>quote, ✉️ sends PDF"] --> o11["✉️ Rep emails Ops:<br/>please hold"] --> o12["✍️ Ops keys a<br/>pending order"]
   end
   S --> Q
   classDef pain fill:#fdecea,stroke:#d93025,color:#222
   class o3,o5,o6,o8,o10,o11,o12 pain
 ```
 
-**New: one integration layer moves the data; a person steps in only for judgment.** Numbers match the steps above.
+**New: one integration layer moves the data; a person steps in only for judgment.**
 
 ```mermaid
 flowchart TB
-  s1["<b>Samples · stages 1–3</b><br/>1 · Designer adds samples to the cart<br/>exact SKU + Project Type"] --> wh["2 · Order arrives instantly<br/>WooCommerce webhook order.created"]
-  wh --> orch
-  q1["<b>Quotes · stages 4–6, weeks later</b><br/>7 · Designer emails quotes@perennialsfabrics.com<br/>or uses the website quote form"] -- "Gmail push" --> ai["8 · AI reads the email<br/>Claude, checked against NetSuite items"]
-  q1 -. "quote form: already structured" .-> orch
-  ai --> orch{{"Orchestrator service<br/>AWS Lambda · idempotent · audit log"}}
-  orch -- "3–5 · SOQL + policy table" --> dq["3 · Lead created, duplicates matched<br/>4 · Qualified in seconds<br/>5 · Converted, opportunity linked"]
-  dq -- "REST + Apex lead convert" --> sf[("Salesforce<br/>Lead · Account · Opportunity · Quote")]
-  orch -- "6 · sample order<br/>11 · hold on one dye lot" --> ns[("NetSuite<br/>sample order · dye-lot hold · CFA")]
-  orch -- "9 · RESTlet" --> pr["9 · Price + dye-lot stock<br/>trade + volume + cut fee"]
-  pr -- "10 · quote on the opportunity" --> sf
-  orch -- "only when unsure:<br/>Flow / Approval Process" --> rv["🧑 Rep task in Salesforce<br/>gray-zone lead, flags, over $20k<br/>with a drafted email"]
-  orch -- "6 · 12" --> em["Customer email drafted<br/>from NetSuite numbers<br/>6 sample confirmation · 12 quote"]
+  s1["Designer orders<br/>samples online"] --> wh["Website<br/>webhook"]
+  q1["Designer emails<br/>for a quote"] --> ai["AI reads<br/>the email"]
+  wh --> orch{{"Integration service"}}
+  ai --> orch
+  orch --> dq["Lead created,<br/>qualified, converted"]
+  dq --> sf[("Salesforce")]
+  orch -- "sample order,<br/>fabric hold" --> ns[("NetSuite")]
+  orch --> pr["Priced from<br/>NetSuite"]
+  pr -- "quote" --> sf
+  orch -- "only when unsure" --> rv["🧑 Rep reviews a<br/>drafted email"]
+  orch --> em["Customer email<br/>sent automatically"]
   classDef auto fill:#e6f4ea,stroke:#1e8e3e,color:#222
   classDef human fill:#fff4e5,stroke:#e8a33d,color:#222
   classDef sys fill:#e8f0fe,stroke:#1a73e8,color:#222
