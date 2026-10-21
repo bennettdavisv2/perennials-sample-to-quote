@@ -15,12 +15,6 @@ CHANGE_EMAIL = ("Re: your quote", "Client signed off on the herringbone. Can you
                                   "of the canvas for the cushions?")
 
 
-@st.cache_resource
-def shared() -> dict:
-    """The latest manual run's numbers, readable from any browser window (the Old vs New page shows them)."""
-    return {}
-
-
 def desk() -> Desk:
     if "desk" not in st.session_state:
         st.session_state.desk = Desk.new()
@@ -29,11 +23,6 @@ def desk() -> Desk:
 
 def reset():
     st.session_state.pop("desk", None)
-    shared().clear()
-
-
-def _publish(d: Desk):
-    shared().update(d.summary(), checklist=d.checklist(), quote_checks=[d.check_quote(q) for q in d.quotes])
 
 
 @st.fragment(run_every="1s")
@@ -405,4 +394,3 @@ def render():
                 or d.system
             d.switch(system)
             {"Gmail": gmail, "Salesforce": salesforce, "NetSuite": netsuite}[system](d)
-    _publish(d)

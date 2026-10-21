@@ -1,6 +1,6 @@
 """Shared state and helpers for the demo pages.
 
-One Workflow lives in the Streamlit session and every page (website, CRM, ERP, old vs new,
+One Workflow lives in the Streamlit session and every page (website, CRM, ERP,
 ops console) reads and writes it, the way the real systems would share data through the
 integration layer. It starts clean (inventory, prices and the existing accounts only; see demo/seed.py),
 or with the 27 workbook requests already processed when the sidebar's "Start from" is set to history.
@@ -25,7 +25,6 @@ SYSTEM_STYLE = {
     "site": ("#faf8f4", "#2b2b2b", "#e7e2d9"),
     "crm": ("#0b5cab", "#ffffff", "#0b5cab"),
     "erp": ("#2b3a4a", "#ffffff", "#2b3a4a"),
-    "compare": ("#f2f4f7", "#1d2939", "#d0d5dd"),
     "manual": ("#fff7ed", "#7c2d12", "#fdba74"),
 }
 

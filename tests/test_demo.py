@@ -1,7 +1,7 @@
 """The demo's storefront / inbox entry points and the old-vs-new comparison."""
 import pytest
 
-from demo import baseline, manual, site
+from demo import manual, site
 from demo.manual import Desk
 from demo.seed import clean, seed
 from s2q.workflow import Workflow
@@ -41,22 +41,8 @@ def test_email_to_quotes_inbox_is_read_and_quoted(seeded):
     assert [l["sku"] for l in q["lines"]] == ["PF-1008"] and res["outcome"].endswith("sent")
 
 
-def test_every_logged_action_has_a_manual_counterpart(seeded):
-    w = seeded
-    site.submit_checkout(w, DANA, samples=[], quotes=[{"sku": "PF-1008", "length": 20, "unit": "Yards",
-                                                       "cfa": "requested", "project_type": "hospitality"}])
-    missing = {(e["system"], e["action"]) for e in w.log.events} - set(baseline.MANUAL)
-    assert not missing, f"add these to baseline.MANUAL: {missing}"
-
-
-def test_old_process_costs_more_than_new_for_every_journey(seeded):
-    w = seeded
-    js = baseline.journeys(w)
-    assert js["ACC-0101"] == ["WEB-001", "WEB-003", "EML-014", "EML-021"]
-    for rids in js.values():
-        t = baseline.totals(w, rids)
-        assert t["old"]["people touches"] > t["new"]["people touches"]
-        assert t["new"]["fields retyped"] == 0 < t["old"]["fields retyped"]
+def test_journeys_group_requests_by_account(seeded):
+    assert site.journeys(seeded)["ACC-0101"] == ["WEB-001", "WEB-003", "EML-014", "EML-021"]
 
 
 # ---------------------------------------------------------------------- clean start (what the demo films)
@@ -94,8 +80,7 @@ def test_new_customer_journey_samples_qualify_quote_revision(day_one):
     assert {l["sku"]: l["yards"] for l in v2["lines"]} == {"PF-1008": 45, "PF-1010": 20}  # canvas: her sampled White
     lot = next(l for l in w.erp.lots if l["lot"] == "L-2403")
     assert lot["reserved"] == 45  # old 30 yd hold released, 45 held
-    t = baseline.totals(w, baseline.journeys(w)["ACC-0101"])
-    assert t["new"]["people touches"] == 1 and t["old"]["fields retyped"] > 50
+    assert sum(r["status"] == "Approved by rep" for r in w.reviews) == 1  # one rep decision in the whole journey
 
 
 # ---------------------------------------------------------------------- the manual desk (today's process)

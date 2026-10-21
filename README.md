@@ -36,7 +36,7 @@ streamlit run demo/app.py     # demo at http://localhost:8501/
 | Folder | Contents |
 |---|---|
 | [`s2q/`](s2q/) | The shared core: workflow, intake (website cart + email), dedupe, qualification, pricing, email templates, and the CRM / ERP adapter interface with in-memory mocks. Tested; production runs it unchanged. |
-| [`demo/`](demo/) | The walkthrough app (storefront, CRM, ERP, today's manual process, Old vs New, ops console), its data (the workbook plus 6 added edge cases) and a filming guide. |
+| [`demo/`](demo/) | The walkthrough app (storefront, CRM, ERP, today's manual process, ops console), its data (the workbook plus 6 added edge cases) and a filming guide. |
 | [`production-handoff/`](production-handoff/) | Implementation guidance for engineering: a phased [roadmap](production-handoff/ROADMAP.md) of what to build first. |
 | [`production-handoff/woocommerce/`](production-handoff/woocommerce/) | Plugin that saves the product-page fields onto the order, and the order webhook setup. |
 | [`production-handoff/integration-service/`](production-handoff/integration-service/) | The AWS service: webhook, Gmail-push and Salesforce-callback handlers, the queue worker, Salesforce / NetSuite adapters, database schema and deployment template. |

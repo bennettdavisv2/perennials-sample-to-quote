@@ -159,13 +159,11 @@ def thanks():
             if res["email"]:
                 with st.expander(f"Email to the customer: {res['email']['subject']}"):
                     st.code(res["email"]["body"], language=None, wrap_lines=True)
-    c1, c2, c3 = st.columns(3)
+    c1, c2 = st.columns(2)
     with c1:
         link("crm", "See it in the CRM", ":material/contacts:")
     with c2:
         link("erp", "See it in the ERP", ":material/inventory_2:")
-    with c3:
-        link("compare", "Compare with today's process", ":material/compare_arrows:")
     if st.button("Continue shopping"):
         go("grid")
 

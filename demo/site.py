@@ -74,3 +74,26 @@ def submit_email(w, name: str, company: str, email: str, message: str) -> dict:
     req = {"id": _next_id(w, "EML"), "type": "Quote request", "channel": "Email", "received": _now(w),
            "name": name, "company": company or "", "email": email.strip().lower(), "message": message}
     return _run(w, req)
+
+
+def account_of(w, rid: str) -> str | None:
+    """CRM account a request ended up on (None for spam or anything never converted)."""
+    res = w.results.get(rid)
+    if not res:
+        return None
+    acct = (res.get("identity") or {}).get("account") or ""
+    if acct:
+        return acct.split()[0]
+    lead = next((l for l in w.crm.leads if l["source"].endswith(f"({rid})") and l["converted_contact_id"]), None)
+    if lead:
+        return next(c["account_id"] for c in w.crm.contacts if c["id"] == lead["converted_contact_id"])
+    return None
+
+
+def journeys(w) -> dict[str, list[str]]:
+    """Account id -> its requests in time order (one customer's sample-to-quote journey)."""
+    out: dict[str, list[str]] = {}
+    for r in sorted(w.inbox, key=lambda r: r["received"]):
+        if (acct := account_of(w, r["id"])) is not None:
+            out.setdefault(acct, []).append(r["id"])
+    return out

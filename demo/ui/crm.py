@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from demo import baseline, site
+from demo import site
 
 from .common import (acct_name, link, md, money, open_reviews, order_lines, reasons, review_buttons, review_message,
                      system_header, table, wf)
@@ -79,7 +79,7 @@ def opportunity(w):
         st.caption("No opportunities yet. One is created when a rep qualifies a new customer.")
         return
     # Open on the opportunity behind the most recent request (e.g. the order just placed on the website).
-    latest = baseline.account_of(w, max(w.inbox, key=lambda r: r["received"])["id"])
+    latest = site.account_of(w, max(w.inbox, key=lambda r: r["received"])["id"])
     default = next((i for i, o in enumerate(opps) if o["account_id"] == latest), 0)
     oid = st.selectbox("Opportunity", [o["id"] for o in opps], index=default,
                        format_func=lambda i: next(f"{o['id']} · {o['name']}" for o in opps if o["id"] == i))
@@ -105,7 +105,7 @@ def opportunity(w):
             quote_lines(q)
             for fl in q["flags"]:
                 st.caption(md(f"Flag: {fl}"))
-    rids = baseline.journeys(w).get(o["account_id"], [])
+    rids = site.journeys(w).get(o["account_id"], [])
     st.markdown("**Activity** (every request on this account)")
     table([w.results[r] for r in rids], {"Request": lambda r: r["request"]["id"],
                                          "Type": lambda r: r["request"]["type"],
