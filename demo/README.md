@@ -28,10 +28,13 @@ The app starts on **day one**: NetSuite's inventory and price rules and Salesfor
 | `site.py` | What the website checkout and the quotes@perennialsfabrics.com inbox send into the workflow |
 | `seed.py`, `data/seed_decisions.json` | The day-one start, and the workbook history with the rep's qualification decisions (Hannah Kim's are left open) |
 | `manual.py` | State and live counters behind the Today (manual) page |
+| `SCRIPT.md` | The voice-over: talk track, numbers to land, likely questions |
 | `baseline.py` | Today's manual steps per automated action (illustrative estimates) |
 | `data/` | The workbook (original + 6 added rows, marked in its Notes column) and the web carts |
 
 ## Filming the walkthrough: side by side
+
+What to say over it, with the numbers to land and likely questions: [SCRIPT.md](SCRIPT.md).
 
 Record the two halves separately, then put them side by side in the edit. Both start from the same day one: Dana Ruiz of Ruiz Interiors is a new customer, and she orders samples, asks for a quote, then changes it.
 

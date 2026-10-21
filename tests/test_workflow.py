@@ -395,3 +395,13 @@ def test_manager_approval_threshold_comes_from_config():
     w2.cfg.manager_approval_over = 100
     res2 = w2.process(next(r for r in w2.inbox if r["id"] == "EML-017"))
     assert any("manager approval" in f for f in res2["flags"])
+
+
+def test_email_reading_eval_rules_baseline():
+    """The labeled email set (s2q/eval.py): the rules reader misses only a quantity written as words."""
+    from s2q.eval import LABELS, score
+    from s2q.extract import RuleExtractor
+    w = Workflow(mode="rules")
+    res = score(RuleExtractor(w.erp.items()), [r for r in w.inbox if r["id"] in LABELS])
+    assert (res["emails_ok"], res["emails"]) == (12, 13)
+    assert [r["id"] for r in res["rows"] if not r["ok"]] == ["EML-022"]
