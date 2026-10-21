@@ -12,7 +12,7 @@
 
 ## Where they helped
 
-- **Speed to a working system.** A tested proof of concept, a multi-page demo and engineering specs within the engagement, with 53 automated tests.
+- **Speed to a working system.** A tested proof of concept, a multi-page demo and engineering specs within the engagement, with 54 automated tests.
 - **Test coverage.** Turned the 21 supplied requests into test cases and designed 6 more edge cases. Two of them exposed real defects, both fixed.
 - **Systems knowledge.** Raised production details early: Salesforce quote lines need each item in a price book, a pending NetSuite order does not hold inventory by default, and each customer's requests must be processed in order.
 - **Reading email.** Maps informal wording ("the navy stripe") to catalog SKUs, constrained to a fixed schema, checked against the catalog and cross-checked by a rule-based parser.

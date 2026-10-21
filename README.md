@@ -12,7 +12,7 @@ Today the sample-to-quote journey crosses three systems that don't talk to each 
 | Switches between systems | 12 | 0 |
 | Request to quote sent | Hours to days, waiting on email (estimate) | Under 1 s from the website, about 8 s from an email |
 
-The manual column was measured on the demo's Today (manual) page; the integration column is the same journey in the new system. Email reading, scored against hand-labeled answers for all 13 workbook emails (`python -m s2q.eval`): Claude 13/13, the rules parser 12/13, with any disagreement routed to a rep. 53 automated tests cover the workflow.
+The manual column was measured on the demo's Today (manual) page; the integration column is the same journey in the new system. Email reading, scored against hand-labeled answers for all 13 workbook emails (`python -m s2q.eval`): Claude 13/13, the rules parser 12/13, with any disagreement routed to a rep. 54 automated tests cover the workflow.
 
 ## Run it
 

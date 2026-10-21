@@ -49,14 +49,86 @@ def scoreboard():
     m[4].metric("Steps done", f"{s['steps_done']}/{sum(1 for _, x, _ in d.checklist() if '(customer)' not in x)}")
 
 
+# How to do each checklist step, so anyone can run the manual process. Values match the new-system journey.
+EMAIL = DANA[2]
+HOW = {
+    "Dana requests samples on the website (customer)":
+        "**You are: Dana → Website.** Keep the prefilled samples (Tidal Herringbone, Canvas Solid White) and click "
+        "**Place order**.",
+    "Search Salesforce: is she already a customer?":
+        "**You are: CSR → Gmail**: open the \"[Website] Sample request\" email. Then **Salesforce → Search**: search "
+        "`ruiz`. No match means she's new.",
+    "Create the lead":
+        f"**Salesforce → Leads → New lead.** Name `Dana Ruiz`, Company `Ruiz Interiors`, Email `{EMAIL}`, "
+        "Lead source *Web sample request*, Status *Qualified*, Project `Hotel lobby, Malibu`. **Save**.",
+    "Qualify her and convert: Account + Contact":
+        "**Salesforce → Convert lead.** Pick her lead, set Account type *Trade – Hospitality*, keep the copied "
+        "fields. **Convert**.",
+    "Create the opportunity":
+        "**Salesforce → Opportunities → New opportunity.** Name `Ruiz Interiors - Hotel lobby`, Account and Contact: "
+        "*Ruiz Interiors* / *Dana Ruiz* (the new IDs), Stage *Sampling*. **Save**.",
+    "Email order ops the sample request":
+        f"**Gmail → Compose** from quotes@. To `{ORDERS}`, Subject `Sample request: Ruiz Interiors`, Message "
+        "`Please send memo samples of PF-1008 and PF-1010 to Dana Ruiz.` **Send**.",
+    "Create the NetSuite customer":
+        f"**NetSuite → Customers → New customer.** Company `Ruiz Interiors`, Email `{EMAIL}`, Salesforce account "
+        "ID: copy it from Salesforce → Accounts & contacts, Price level *Trade*, Terms *Net 30*. **Save**.",
+    "Enter the sample order in NetSuite":
+        "**NetSuite → Sales orders → New sales order.** Form *Sample*, Customer *Ruiz Interiors*, line 1 `PF-1008` "
+        "qty 1, line 2 `PF-1010` qty 1, Ship to `Dana Ruiz`. **Save order**.",
+    "Email Dana that samples are on the way":
+        f"**Gmail → Compose.** To `{EMAIL}`, Subject `Your samples are on the way`, a short message. **Send**.",
+    "Dana requests a quote on the website (customer)":
+        "**You are: Dana → Website → Request A Quote.** Keep the prefill (Tidal Herringbone, 30 yards, CFA "
+        "requested). **Submit quote request**.",
+    "Reply: 'checking stock and pricing'":
+        f"**You are: CSR → Gmail → Compose.** To `{EMAIL}`, Subject `Re: your quote request`, Message "
+        "`Checking stock and pricing, back to you shortly.` **Send**.",
+    "Look up stock by dye lot and list price in NetSuite":
+        "**NetSuite → Inventory.** Search `herringbone`. Note lot **L-2403** (88 yd available) and list price "
+        "**$112**.",
+    "Email order ops to hold the yardage":
+        f"**Gmail → Compose.** To `{ORDERS}`, Subject `Hold request: Ruiz Interiors`, Message "
+        "`Please hold 30 yd of PF-1008 from lot L-2403 for 14 days.` **Send**.",
+    "Enter the hold in NetSuite (pending sales order)":
+        "**NetSuite → Sales orders → New sales order.** Form *Pending hold*, Customer *Ruiz Interiors*, line 1 "
+        "`PF-1008`, dye lot `L-2403`, qty 30, Memo `Quote hold`. **Save order**.",
+    "Work out the price and build the quote in Salesforce":
+        "Price: $112 less 15% trade = **$95.20/yd**; 30 × 95.20 = **$2,856.00**. **Salesforce → Quotes → New "
+        "quote**: pick the opportunity; line 1 `PF-1008`, `Tidal Herringbone - Slate`, 30, 95.20, 2856.00; "
+        "Quote total 2856.00. **Save quote**.",
+    "Email Dana the quote":
+        f"**Gmail → Compose.** To `{EMAIL}`, Subject `Your Perennials quote`, the line and total. **Send**.",
+    "Dana emails a change (customer)":
+        "**You are: Dana → Dana's inbox.** Keep the prefilled change (45 yd herringbone, 20 yd canvas). **Send**.",
+    "Release the old hold in NetSuite":
+        "**You are: CSR → NetSuite → Sales orders.** Under *Release a hold*, pick the hold and click **Release**.",
+    "Enter the new hold":
+        "**NetSuite → New sales order.** Form *Pending hold*, Customer *Ruiz Interiors*, line 1 `PF-1008`, lot "
+        "`L-2403`, qty 45; line 2 `PF-1010`, lot `L-2428`, qty 20. **Save order**. (Search `canvas` in Inventory "
+        "first to find the lot.)",
+    "Revise the quote in Salesforce":
+        "Canvas: $64 less 15% = **$54.40/yd**. **Salesforce → Quotes → New quote**: line 1 `PF-1008`, 45, 95.20, "
+        "4284.00; line 2 `PF-1010`, `Canvas Solid - White`, 20, 54.40, 1088.00; Quote total **5372.00**. "
+        "**Save quote** (the old one is superseded).",
+    "Email Dana the revised quote":
+        f"**Gmail → Compose.** To `{EMAIL}`, Subject `Your revised Perennials quote`, the lines and total. "
+        "**Send**. Then click **Stop the clock**.",
+}
+
+
 def checklist(d: Desk):
     st.markdown("**Today's process**")
+    st.caption("Open a step to see exactly what to do. The next step is open.")
+    steps = d.checklist()
+    nxt = next((i for i, (_, _, done) in enumerate(steps) if not done), None)
     section = None
-    for sec, step, done in d.checklist():
+    for i, (sec, step, done) in enumerate(steps):
         if sec != section:
             st.caption(sec)
             section = sec
-        st.markdown(f"{'~~' if done else ''}{'☑' if done else '☐'} {step}{'~~' if done else ''}")
+        with st.expander(f"{'☑' if done else '☐'} {step}", expanded=i == nxt):
+            st.markdown(HOW[step])
 
 
 def _skus(d: Desk) -> list[str]:

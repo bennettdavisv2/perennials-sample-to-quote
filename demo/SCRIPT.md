@@ -10,7 +10,7 @@ What to say over the recording. The click-by-click steps for both halves are in 
 | With the integration | 0 values typed · 0 emails written · 1 rep decision | Old vs New page |
 | Time from request to quote sent | Under a second from the website; about 8 seconds from an email, including Claude | Thank-you page and CRM inbox |
 | Email reading accuracy | Claude 13/13 emails, 19/19 lines; rules 12/13 | `python -m s2q.eval` |
-| Tested behavior | 53 automated tests, 27 scenarios including 6 added edge cases | `pytest` |
+| Tested behavior | 54 automated tests, 27 scenarios including 6 added edge cases | `pytest` |
 | Path to production | About 9 weeks, starting read-only | `production-handoff/ROADMAP.md` |
 
 ## Talk track

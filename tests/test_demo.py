@@ -131,3 +131,8 @@ def test_manual_hold_reserves_the_typed_lot_and_quote_check_catches_mistakes():
                                      "line_total": 3360}], 3360)   # forgot the 15% trade discount
     chk = d.check_quote(q)
     assert chk["expected"] == 2856 and len(chk["problems"]) == 2
+
+
+def test_every_manual_step_has_instructions():
+    from demo.ui.manual import HOW
+    assert {step for _, step, _ in Desk.new().checklist()} == set(HOW)
