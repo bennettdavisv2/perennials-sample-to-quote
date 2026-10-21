@@ -4,9 +4,11 @@
 
 ## Summary
 
-Perennials' sample-to-quote process spans three systems that do not exchange data: the WooCommerce website, Salesforce (CRM) and NetSuite (ERP). Staff bridge the gaps by hand. They re-enter website submissions into Salesforce, relay sample and hold requests to order operations by email, and correspond with customers while stock and pricing are checked. The proof of concept introduces a single integration layer with two objectives: **no value is entered twice**, and **no customer waits on an internal hand-off**. In the reference scenario, one customer's journey from sample request to quote falls from an estimated 36 manual steps and 86 re-entered values to three decisions by a sales representative.
+This proof of concept connects Perennials' WooCommerce website, Salesforce (CRM) and NetSuite (ERP) through a single integration layer, so a sample request or quote email moves from intake to a priced quote with inventory on hold, without manual re-entry. It is built around two objectives: no value is entered twice, and no customer waits on an internal hand-off. In the reference scenario, one customer's journey from sample request to quote requires three decisions by a sales representative.
 
 ## 1. Architecture
+
+The architecture is grounded in the existing process. Each step of today's sample-to-quote workflow was mapped, and every step that is mechanical (re-entering data, relaying orders between teams, checking stock and price, drafting routine replies) is automated. Steps that require judgment remain with people (Section 4).
 
 ![Figure 1. Target process. Each step is placed in the system where it runs.](diagrams/new-flow.svg)
 
