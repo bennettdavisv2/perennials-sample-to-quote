@@ -168,3 +168,33 @@ The order's `customer_note` is the order note. Billing name, company and email g
 | E2 | Create a Pub/Sub topic `s2q-gmail`, give `gmail-api-push@system.gserviceaccount.com` publish rights, and add a push subscription to `/webhooks/gmail`. | S |
 | E3 | Call `users.watch` on quotes@perennialsfabrics.com with the INBOX label; renew it daily (§5.1). | S |
 | E4 | Send replies through Salesforce from the org-wide quotes@perennialsfabrics.com address, so threads stay in one place and are logged on the Contact. | S (with S7) |
+
+---
+
+## 7. MCP servers: where they fit
+
+Salesforce and NetSuite both ship official MCP servers, which let an AI client such as Claude read and change their data. As of October 2026:
+
+| | NetSuite AI Connector Service | Salesforce Hosted MCP Servers |
+|---|---|---|
+| Status | Available, no extra license (the AI client may need a paid plan) | Generally available since April 2026; Enterprise Edition and above |
+| Built-in tools | MCP Standard Tools SuiteApp: create / get / update records, record-type metadata, saved searches, reports, custom SuiteQL | Record read / create / update / delete, Flows, named queries, prompt templates |
+| Our own tools | Custom tool scripts (SuiteScript 2.1, `@NScriptType CustomTool`), deployed with SDF | Apex actions, Apex REST and Flows published as hosted tools |
+| Login | OAuth 2.0 authorization code with PKCE only: a person signs in through a browser. The Administrator role isn't allowed | OAuth 2.0 with PKCE only, through an External Client App: a person signs in |
+| Runs as | The signed-in user's NetSuite role | The signed-in user, with field-level security and sharing rules |
+
+### The pipeline stays on the regular APIs
+1. **No way for a service to log in.** Both servers need a person to sign in. The pipeline runs unattended (a webhook at 2am still has to create the sample order), so it uses the service logins in §5.4: Salesforce's JWT bearer flow for an integration user, and NetSuite's certificate-based OAuth.
+2. **Deterministic in the middle.** Claude reads emails; pricing, dye-lot holds and decisions are tested code (`s2q/`). Letting a model choose which records to write through MCP would make the money and inventory steps probable instead of guaranteed.
+3. **Volume.** Nightly product sync and the account backfill are bulk work, which suits the REST and SuiteQL APIs.
+
+### Where MCP adds value
+| Use | Who | How | When |
+|---|---|---|---|
+| **Rep assistant** for the review queue: "what has Ruiz Interiors ordered?", "which lot covers 45 yards?", "why was this quote flagged?" | Reps | Claude connected to both servers, as the rep, read-only at first (D12) | Later, after phase 4 |
+| **One implementation, two callers:** the pricing RESTlet (N5) and lead convert (S2) also published as MCP tools (`s2q_price_quote` as a NetSuite custom tool, lead convert as a hosted Apex tool) | NS, SF | Put the logic in a shared SuiteScript module / Apex class; the RESTlet and the MCP tool are thin wrappers | With 4.2 and 3.1 |
+| **Build and clean-up help:** field definitions for the adapters, SuiteQL for the SKU audit (1.1) and the unmatched accounts (1.2), daily shadow comparisons (2.5) | INT, NS | Claude with the NetSuite server, as a non-admin role scoped to the sandbox | Phases 0–2 |
+
+Setup notes: in NetSuite, enable the AI Connector Service, install the MCP Standard Tools SuiteApp, and create an integration record (public client, authorization code grant, AI Connector Service scope) and a custom role. In Salesforce, create an External Client App for the MCP client and choose which tools each server exposes. Salesforce's DX MCP server is for developers only and reaches end of life on November 2, 2026 (R11). Third-party MCP gateways for NetSuite exist, but they add a vendor in the ERP data path.
+
+Sources: [NetSuite AI Connector Service FAQ](https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/article_4160616848.html) · [SuiteScript Custom Tool script type](https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/article_1185045525.html) · [Salesforce Hosted MCP Servers](https://developer.salesforce.com/docs/platform/hosted-mcp-servers/guide) · [Custom Apex as a hosted MCP tool](https://developer.salesforce.com/blogs/2026/05/expose-custom-apex-as-a-hosted-mcp-tool-for-agents)

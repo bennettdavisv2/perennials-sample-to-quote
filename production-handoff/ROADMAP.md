@@ -55,7 +55,7 @@ Prove matching and email reading on real traffic with **zero risk**: the service
 | 2.2 | Gmail watch on quotes@perennialsfabrics.com (E2, E3) | INT | S | 0.3 | A test email reaches `/webhooks/gmail` | [gmail/](gmail/) |
 | 2.3 | Service skeleton: handlers, FIFO queue, worker, Postgres, idempotency, dead-letter alarm | INT | L | 0.4 | A duplicate webhook is processed once; a forced failure lands in the dead-letter queue and alarms | [integration-service/](integration-service/) |
 | 2.4 | Read-only adapters: Salesforce lookups, NetSuite items and lots (N6) | INT | M | 1.2, 1.5 | For 20 sampled customers and items, answers match what the Salesforce / NetSuite screens show | [integration-service/adapters/](integration-service/adapters/) |
-| 2.5 | **Run in shadow for 2 weeks;** compare daily with what reps actually did | INT + Ops | 2 wk | 2.1–2.4 | At least 95% agreement on SKU and quantity from emails; no wrong-customer matches; qualification volume measured (sizes the rep queue) | — |
+| 2.5 | **Run in shadow for 2 weeks;** compare daily with what reps actually did (the NetSuite MCP server and SuiteQL make the daily comparison an interactive check, §7) | INT + Ops | 2 wk | 2.1–2.4 | At least 95% agreement on SKU and quantity from emails; no wrong-customer matches; qualification volume measured (sizes the rep queue) | — |
 
 ## Phase 3: Leads and samples
 
@@ -76,7 +76,7 @@ Money is involved, so a person checks every quote until the numbers are trusted.
 | Step | What | Owner | Size | Depends on | Done when | Start from |
 |---|---|---|---|---|---|---|
 | 4.1 | Nightly product sync: NetSuite items → Salesforce Products and price book (S1); discontinued flag to WooCommerce (W5) | INT + SF | M | 1.5 | Every active SKU has a price-book entry | [REFERENCE §5.1](REFERENCE.md#51-endpoints) |
-| 4.2 | Pricing RESTlet (N5) | NS | M | 1.6, D7 | Matches `s2q/pricing.py` on its test cases and on 50 sampled lines | [netsuite/s2q_price_restlet.js](netsuite/s2q_price_restlet.js) |
+| 4.2 | Pricing RESTlet (N5); keep the logic in a library the rep assistant can reuse as an MCP custom tool (§7) | NS | M | 1.6, D7 | Matches `s2q/pricing.py` on its test cases and on 50 sampled lines | [netsuite/s2q_price_restlet.js](netsuite/s2q_price_restlet.js) |
 | 4.3 | Quote creation, versions and flags in Salesforce | INT + SF | M | 4.1, 4.2 | Replaying EML-014 to EML-021 gives the expected quotes and versions | [integration-service/adapters/salesforce.py](integration-service/adapters/salesforce.py) |
 | 4.4 | Approval process with the manager threshold (S5) | SF | S | 4.3, D6 | A quote over the threshold routes to a manager | [REFERENCE §3.2](REFERENCE.md#32-configuration-and-automation) |
 | 4.5 | Quote PDF template and quote email (S7) | SF | S | 4.3 | The quote email and PDF are logged on the Contact | [REFERENCE §3.2](REFERENCE.md#32-configuration-and-automation) |
@@ -105,6 +105,7 @@ Valuable, but not needed to remove the manual handoffs:
 - **Project-level opportunity matching:** a designer runs several jobs at once.
 - **Extraction accuracy set:** about 100 labeled historical emails, to tune review thresholds from data.
 - **Logged-in matching (W4):** if samples move behind a trade login (D4).
+- **Rep assistant over MCP (D12):** Claude connected to Salesforce's hosted MCP server and NetSuite's AI Connector Service, running as the rep, to answer questions in the review queue ("what has this account ordered?", "which lot covers 45 yards?"). Publish the pricing script and lead convert as MCP tools so the assistant and the pipeline share one implementation. Read-only first. See [REFERENCE §7](REFERENCE.md#7-mcp-servers-where-they-fit).
 
 ## Acceptance suite (every phase)
 

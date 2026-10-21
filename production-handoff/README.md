@@ -9,7 +9,7 @@ Implementation guidance for engineering: how to take the sample-to-quote PoC int
 | [ROADMAP.md](ROADMAP.md) | **Start here.** The priority list: seven phases in build order, each step with owner, size, dependencies and a "done when" check |
 | [DECISIONS.md](DECISIONS.md) | Questions only Perennials can answer, each with a recommended default and the step it blocks |
 | [RISKS.md](RISKS.md) | What's most likely to go wrong and which phase deals with it |
-| [REFERENCE.md](REFERENCE.md) | The detailed specs by system: fields, scripts, endpoints, settings. The roadmap's item numbers (W1, S2, N8…) point here |
+| [REFERENCE.md](REFERENCE.md) | The detailed specs by system: fields, scripts, endpoints, settings. The roadmap's item numbers (W1, S2, N8…) point here. §7 covers where the Salesforce and NetSuite MCP servers fit, and why the pipeline doesn't use them |
 
 ## The plan at a glance
 
