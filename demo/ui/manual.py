@@ -1,4 +1,4 @@
-"""Today (manual): the old process, filmed. You play Dana on the website and in her inbox, and the CSR in a
+"""Today (manual): the old process, by hand. You play Dana on the website and in her inbox, and the CSR in a
 blank Gmail, Salesforce and NetSuite. Nothing is connected: every value is typed and every email written by
 hand. The scoreboard measures it live (demo/manual.py)."""
 from __future__ import annotations

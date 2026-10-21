@@ -45,7 +45,7 @@ def test_journeys_group_requests_by_account(seeded):
     assert site.journeys(seeded)["ACC-0101"] == ["WEB-001", "WEB-003", "EML-014", "EML-021"]
 
 
-# ---------------------------------------------------------------------- clean start (what the demo films)
+# ---------------------------------------------------------------------- clean start (the demo's default)
 @pytest.fixture()
 def day_one():
     return clean(Workflow(mode="rules"))
