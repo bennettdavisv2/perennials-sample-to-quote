@@ -2,6 +2,18 @@
 
 Today the sample-to-quote journey crosses three systems that don't talk to each other: the website, the CRM (Salesforce) and the ERP (NetSuite). People retype the same information from one into the next and email customers back and forth. This PoC puts one integration layer between them. Every request goes through all six stages (lead, qualification, sample order + opportunity, quote request, price quote, inventory reservation) with no retyping, and a person steps in only when a judgment call is needed.
 
+## Results
+
+| One customer: samples, a quote and one change | By hand today | With the integration |
+|---|---|---|
+| Staff time | 15 min 22 s | 1 click (qualify a new customer) |
+| Values typed by hand | 56 | 0 |
+| Emails written by staff | 6 | 0 |
+| Switches between systems | 12 | 0 |
+| Request to quote sent | Hours to days, waiting on email (estimate) | Under 1 s from the website, about 8 s from an email |
+
+The manual column was measured on the demo's Today (manual) page; the integration column is the same journey in the new system. Email reading, scored against hand-labeled answers for all 13 workbook emails (`python -m s2q.eval`): Claude 13/13, the rules parser 12/13, with any disagreement routed to a rep. 53 automated tests cover the workflow.
+
 ## Run it
 
 Requires Python 3.10+.

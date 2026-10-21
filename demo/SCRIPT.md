@@ -1,12 +1,12 @@
 # Demo script (about 5 minutes)
 
-What to say over the recording. The click-by-click steps for both halves are in [README.md](README.md#filming-the-walkthrough-side-by-side). Fill in the bracketed numbers from your manual run before recording the voice-over.
+What to say over the recording. The click-by-click steps for both halves are in [README.md](README.md#filming-the-walkthrough-side-by-side).
 
 ## Numbers to land
 
 | Claim | Number | Source |
 |---|---|---|
-| Today, by hand (one customer: samples, quote, one change) | [time] · [values typed] · [emails written] · [system switches] | Today (manual) scoreboard |
+| Today, by hand (one customer: samples, quote, one change) | 15 min 22 s · 56 values typed · 6 emails written · 12 system switches | Today (manual) scoreboard |
 | With the integration | 0 values typed · 0 emails written · 1 rep decision | Old vs New page |
 | Time from request to quote sent | Under a second from the website; about 8 seconds from an email, including Claude | Thank-you page and CRM inbox |
 | Email reading accuracy | Claude 13/13 emails, 19/19 lines; rules 12/13 | `python -m s2q.eval` |
@@ -34,7 +34,7 @@ What to say over the recording. The click-by-click steps for both halves are in 
 > The core logic is the same tested code in production. Only the adapters change, from mocks to Salesforce and NetSuite. The rollout earns trust before it takes risk: two weeks in shadow mode on real traffic writing nothing, then samples, then quotes with a rep approving every one, then inventory holds, and only then auto-send. About nine weeks for one engineer with part-time admins.
 
 **4:30 – 5:00 · Close** (Old vs New, measured numbers)
-> One customer: [time] and [values typed] by hand, against zero typed, zero emails written and one decision. With another week I'd connect it to sandboxes in shadow mode, and give every rep an AI assistant over the Salesforce and NetSuite MCP servers, so they can ask "which dye lot covers 45 yards?" and get an answer from the same rules the quotes use.
+> One customer: 15 minutes 22 seconds, 56 values typed and 6 emails written by hand, against zero typed, zero emails written and one decision. With another week I'd connect it to sandboxes in shadow mode, and give every rep an AI assistant over the Salesforce and NetSuite MCP servers, so they can ask "which dye lot covers 45 yards?" and get an answer from the same rules the quotes use.
 
 ## If they ask
 
