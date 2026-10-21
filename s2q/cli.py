@@ -23,12 +23,14 @@ def main():
     ap.add_argument("--approve-all", action="store_true")
     ap.add_argument("--verbose", "-v", action="store_true")
     ap.add_argument("--data")
-    ap.add_argument("--decisions", default=str(Path(__file__).resolve().parents[1] / "demo" / "data" / "seed_decisions.json"),
+    decisions_file = Path(__file__).resolve().parents[1] / "demo" / "data" / "seed_decisions.json"
+    ap.add_argument("--decisions", default=str(decisions_file),
                     help="JSON of recorded qualification decisions to replay (request id -> qualify / reject)")
     ap.add_argument("--no-decisions", action="store_true", help="don't replay decisions (new senders wait for a rep)")
     a = ap.parse_args()
 
-    wf = Workflow(a.data, mode="rules" if a.rules else "auto") if a.data else Workflow(mode="rules" if a.rules else "auto")
+    mode = "rules" if a.rules else "auto"
+    wf = Workflow(a.data, mode=mode) if a.data else Workflow(mode=mode)
     print(f"Extractor: {wf.extractor.status}\n")
     decisions = None
     if not a.no_decisions and Path(a.decisions).exists():
@@ -59,7 +61,8 @@ def main():
     for rv in wf.reviews:
         print(f"  {rv['id']} {rv['request']} [{rv['status']}] {rv['stage']}: {rv['reason'][:110]}")
     print(f"\nCRM: {len(wf.crm.leads)} leads, {len(wf.crm.accounts)} accounts, {len(wf.crm.opportunities)} opps, "
-          f"{len(wf.crm.quotes)} quotes | ERP: {len(wf.erp.sales_orders)} sales orders | audit events: {len(wf.log.events)}")
+          f"{len(wf.crm.quotes)} quotes | ERP: {len(wf.erp.sales_orders)} sales orders | "
+          f"audit events: {len(wf.log.events)}")
 
 
 if __name__ == "__main__":

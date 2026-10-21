@@ -235,12 +235,13 @@ class Desk:
             if not self.item(l["sku"]):
                 errors.append(f"{l['sku']} is not a NetSuite item")
             elif form == "Pending hold":
-                lot = next((x for x in self.lots if x["sku"] == l["sku"] and x["lot"] == (l.get("lot") or "").strip().upper()),
-                           None)
+                want = (l.get("lot") or "").strip().upper()
+                lot = next((x for x in self.lots if x["sku"] == l["sku"] and x["lot"] == want), None)
                 if not lot:
                     errors.append(f"{l['sku']}: no dye lot {l.get('lot') or '(blank)'}")
                 elif lot["on_hand"] - lot["reserved"] < (l.get("qty") or 0):
-                    errors.append(f"{l['sku']} lot {lot['lot']}: only {lot['on_hand'] - lot['reserved']:g} yd available")
+                    free = lot["on_hand"] - lot["reserved"]
+                    errors.append(f"{l['sku']} lot {lot['lot']}: only {free:g} yd available")
         self.type(filled(form, customer_id, memo, ship_to) + sum(filled(*l.values()) for l in lines))
         if errors or not lines:
             self._event("ns_error", "; ".join(errors) or "no lines")
@@ -295,7 +296,8 @@ class Desk:
             ("Samples", "Email Dana that samples are on the way", self._first("email", after=seq(smp), pred=to_cust)),
             ("Quote", "Dana requests a quote on the website (customer)", quote_req),
             ("Quote", "Reply: 'checking stock and pricing'", self._first("email", after=seq(quote_req), pred=to_cust)),
-            ("Quote", "Look up stock by dye lot and list price in NetSuite", self._first("ns_lookup", after=seq(quote_req))),
+            ("Quote", "Look up stock by dye lot and list price in NetSuite",
+             self._first("ns_lookup", after=seq(quote_req))),
             ("Quote", "Email order ops to hold the yardage", self._first("email", after=seq(quote_req), pred=to_ops)),
             ("Quote", "Enter the hold in NetSuite (pending sales order)",
              self._first("ns_order", after=seq(quote_req), pred=lambda e: "hold" in e["detail"])),

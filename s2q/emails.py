@@ -22,7 +22,7 @@ def sample_confirmation(name, skus_desc, excluded, notes, opp_name):
     return {"subject": subj, "body": "\n".join(body)}
 
 
-def quote_email(name, quote, lines_desc, notes, valid_until, budgetary, trade=True):
+def quote_email(name, quote, lines_desc, notes, valid_until, budgetary):
     kind = "budgetary quote" if budgetary else "quote"
     body = [f"Hi {_first(name)},", "", f"Here is your {kind} {quote['id']}:", ""]
     for d in lines_desc:
@@ -32,9 +32,8 @@ def quote_email(name, quote, lines_desc, notes, valid_until, budgetary, trade=Tr
         body += ["Notes:"] + [f"  - {n}" for n in notes] + [""]
     body += [f"Pricing is valid until {valid_until:%B %d, %Y}."]
     if quote.get("reservation_id"):
-        who = "your client signs off" if trade else "you're ready to order"
-        body.append(f"We've placed a 14-day hold on the in-stock yardage so it's ready when {who}.")
-    body += ["", "Best,", "Perennials Trade Team" if trade else "Perennials Customer Care"]
+        body.append("We've placed a 14-day hold on the in-stock yardage so it's ready when your client signs off.")
+    body += ["", "Best,", "Perennials Trade Team"]
     return {"subject": f"Perennials {kind} {quote['id']}", "body": "\n".join(body)}
 
 

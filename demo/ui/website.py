@@ -34,7 +34,7 @@ def grid(products):
     st.markdown("### Performance fabrics")
     st.caption("Log in to see pricing and availability.")
     for row in range(0, len(products), 4):
-        for col, p in zip(st.columns(4), products[row:row + 4]):
+        for col, p in zip(st.columns(4), products[row:row + 4], strict=False):  # last row may be short
             with col.container(border=True):
                 st.markdown("".join(swatch(site.SWATCH.get(c["color"], "#ccc"), 34, c["color"])
                                     for c in p["colorways"]), unsafe_allow_html=True)

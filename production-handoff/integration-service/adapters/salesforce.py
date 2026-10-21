@@ -28,7 +28,8 @@ class SalesforceCRM:
         raise NotImplementedError
 
     def lead_by_email(self, email):
-        """SELECT Id, Status, ConvertedContactId, ... FROM Lead WHERE Email = :email ORDER BY CreatedDate DESC LIMIT 1"""
+        """SELECT Id, Status, ConvertedContactId, ... FROM Lead WHERE Email = :email
+           ORDER BY CreatedDate DESC LIMIT 1"""
         raise NotImplementedError
 
     def account_by_name(self, name):
@@ -44,7 +45,8 @@ class SalesforceCRM:
     # ---------- leads ----------
     def create_lead(self, req, segment_hint, project):
         """Upsert on the external id (idempotent): PATCH {API}/sobjects/Lead/Source_Request_Id__c/{req id}
-           LeadSource = 'Web Sample Request' | 'Email Quote', Project_Name__c, Project_Type__c, Description = message."""
+           LeadSource = 'Web Sample Request' | 'Email Quote', Project_Name__c, Project_Type__c,
+           Description = message."""
         raise NotImplementedError
 
     def set_lead_status(self, lead, status, reason):
@@ -100,5 +102,6 @@ class SalesforceCRM:
 
     # ---------- customer email (S7) ----------
     def send_email(self, contact_id, subject, body):
-        """POST {API}/actions/standard/emailSimple  from the org-wide quotes@perennialsfabrics.com address (logged on the Contact)"""
+        """POST {API}/actions/standard/emailSimple from the org-wide quotes@perennialsfabrics.com address
+           (logged on the Contact)"""
         raise NotImplementedError

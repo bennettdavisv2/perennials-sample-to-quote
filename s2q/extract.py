@@ -104,7 +104,8 @@ class RuleExtractor:
         self.by_fabric: dict[str, list[dict]] = {}
         for it in catalog:
             self.by_fabric.setdefault(it["fabric"], []).append(it)
-        pats = sorted(((a, f) for f, al in ALIASES.items() if f in self.by_fabric for a in al), key=lambda x: -len(x[0]))
+        pats = sorted(((a, f) for f, al in ALIASES.items() if f in self.by_fabric for a in al),
+                      key=lambda x: -len(x[0]))
         self.alias_re = re.compile(r"\b(" + "|".join(re.escape(a) for a, _ in pats) + r")\b", re.I)
         self.alias_map = {a: f for a, f in pats}
 
@@ -155,7 +156,8 @@ class RuleExtractor:
                     q2 = (re.search(r"\b(?:at|to)\s+(\d+(?:\.\d+)?)", post)
                           or re.search(r"(\d+(?:\.\d+)?)\s*(yards|yard|yds|yd|meters|metres|m|feet|foot|ft)\b", post))
                     if q2:
-                        qty, unit = float(q2.group(1)), _unit(q2.group(2) if q2.lastindex and q2.lastindex > 1 else None)
+                        has_unit = q2.lastindex and q2.lastindex > 1
+                        qty, unit = float(q2.group(1)), _unit(q2.group(2) if has_unit else None)
                 if qty is not None and unit is None:
                     unit = "yd"
             mention = text[s:e]
@@ -163,7 +165,8 @@ class RuleExtractor:
                 if sku:
                     ref = f"{mention} ({sku['color']})"
                 else:
-                    ref = f"{pre_words.split()[-1] if pre_words and not ambiguous and len(options) > 1 else ''} {mention}".strip()
+                    lead_word = pre_words.split()[-1] if pre_words and not ambiguous and len(options) > 1 else ""
+                    ref = f"{lead_word} {mention}".strip()
                 items.append({"reference": ref, "skus": [sku["sku"]] if sku else [x["sku"] for x in skus],
                               "quantity": qty, "unit": unit, "ambiguous": False if sku else ambiguous,
                               "inferred": not exact})
@@ -179,7 +182,8 @@ class RuleExtractor:
         seg, subtype, signals = classify(text, req.get("company"))
 
         need_by = None
-        m = re.search(r"\b(?:by|before)\s+((?:early|mid|late)[- ]?)?(january|february|march|april|may|june|july|august|september|october|november|december)\b", low)
+        months = "january|february|march|april|may|june|july|august|september|october|november|december"
+        m = re.search(rf"\b(?:by|before)\s+((?:early|mid|late)[- ]?)?({months})\b", low)
         if m:
             need_by = m.group(0)
         return {
@@ -203,17 +207,23 @@ EXTRACTION_SCHEMA = {
     "additionalProperties": False,
     "properties": {
         "segment_hint": {"type": "string", "enum": ["trade", "consumer", "student", "spam", "competitor", "unclear"],
-                         "description": "Who is asking. trade = designer/architect/upholsterer/hospitality/specifier buying for a client project."},
-        "trade_subtype": {"type": "string", "description": "e.g. Interior Designer, Architect, Upholsterer, Hospitality, Marine, Other"},
-        "signals": {"type": "array", "items": {"type": "string"}, "description": "Short phrases from the message that justify segment_hint."},
+                         "description": "Who is asking. trade = designer/architect/upholsterer/hospitality/"
+                                        "specifier buying for a client project."},
+        "trade_subtype": {"type": "string",
+                          "description": "e.g. Interior Designer, Architect, Upholsterer, Hospitality, Marine, Other"},
+        "signals": {"type": "array", "items": {"type": "string"},
+                    "description": "Short phrases from the message that justify segment_hint."},
         "project": {"type": "string", "description": "One-line project description, or empty."},
         "items": {"type": "array", "items": {"type": "object", "additionalProperties": False, "properties": {
             "reference": {"type": "string", "description": "How the customer referred to it, verbatim"},
-            "skus": {"type": "array", "items": {"type": "string"}, "description": "Catalog SKUs this could mean. More than one only if ambiguous or 'every color'."},
+            "skus": {"type": "array", "items": {"type": "string"},
+                     "description": "Catalog SKUs this could mean. More than one only if ambiguous or 'every color'."},
             "quantity": {"type": ["number", "null"]},
             "unit": {"anyOf": [{"type": "string", "enum": ["yd", "m", "ft"]}, {"type": "null"}]},
             "ambiguous": {"type": "boolean"},
-            "inferred": {"type": "boolean", "description": "True if the SKU was inferred from a loose description (e.g. 'green velvet') rather than named."}},
+            "inferred": {"type": "boolean",
+                         "description": "True if the SKU was inferred from a loose description (e.g. 'green velvet') "
+                                        "rather than named."}},
             "required": ["reference", "skus", "quantity", "unit", "ambiguous", "inferred"]}},
         "wildcard": {"type": "boolean", "description": "Asked for everything / all fabrics without naming them."},
         "need_by": _NULLABLE_STR,
@@ -243,7 +253,8 @@ class LLMExtractor:
             "Rules: informal names count ('navy stripe' = Harbor Stripe Navy; 'green velvet' = Velvet Plush Moss). "
             "If a fabric has several colors and none is given, list all its SKUs and set ambiguous=true. "
             "'Every color of X' means one item per SKU of X. Do not compute prices. Do not invent SKUs. "
-            "Quantities: keep the customer's unit (yd, m or ft); a bare number next to a fabric in a yardage request is yards. "
+            "Quantities: keep the customer's unit (yd, m or ft); "
+            "a bare number next to a fabric in a yardage request is yards. "
             "Sample requests have quantity null.")
 
     def extract(self, req: dict) -> dict:
@@ -387,7 +398,8 @@ class Extractor:
         notes = []
         if req.get("cart"):
             ext = self.cart.extract(req)
-            notes += [f"Cart line {s} is not an item in the ERP: left out, not substituted" for s in ext["invalid_skus"]]
+            notes += [f"Cart line {s} is not an item in the ERP: left out, not substituted"
+                      for s in ext["invalid_skus"]]
             return ext, notes
         rules = self.rules.extract(req)
         if not self.llm:

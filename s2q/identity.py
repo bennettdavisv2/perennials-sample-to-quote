@@ -61,7 +61,8 @@ def resolve(crm, req: dict) -> dict:
 
 
 def summary(ident: dict) -> dict:
+    a = ident["account"]
     return {"match": ident["match"], "confidence": ident["confidence"],
-            "account": f"{ident['account']['id']} {ident['account']['name']} ({ident['account']['type']}, {ident['account']['status']})" if ident["account"] else "",
+            "account": f"{a['id']} {a['name']} ({a['type']}, {a['status']})" if a else "",
             "contact": f"{ident['contact']['id']} {ident['contact']['name']}" if ident["contact"] else "",
             "lead": ident["lead"]["id"] if ident["lead"] else ""}

@@ -3,7 +3,7 @@
 On perennialsfabrics.com a sample or quote line is added from a product page (one colorway
 = one variant SKU), and checkout adds the contact fields. These helpers build the same
 request shape the workbook rows use, so the workflow treats a live demo submission exactly
-like a seeded one: two front doors (website, email), one pipeline.
+like a workbook one: two front doors (website, email), one pipeline.
 """
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ def _next_id(w, prefix: str) -> str:
 
 
 def _now(w):
-    """Simulated clock: an hour after the latest request, so live submissions follow the seeded history
+    """Simulated clock: an hour after the latest request, so live submissions follow the workbook history
     (or the clean start's clock, demo.seed.clean)."""
     return max((r["received"] for r in w.inbox), default=getattr(w, "demo_clock", None)) + timedelta(hours=1)
 

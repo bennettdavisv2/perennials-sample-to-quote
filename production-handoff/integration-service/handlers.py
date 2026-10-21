@@ -23,7 +23,8 @@ def enqueue(request: dict, idempotency_key: str) -> None:
     - MessageDeduplicationId = idempotency_key; also inserted into Postgres `requests.source_id`
       (unique) by the worker, so a webhook delivered twice is processed once.
     """
-    raise NotImplementedError("boto3 sqs.send_message(QueueUrl, MessageBody=json, MessageGroupId, MessageDeduplicationId)")
+    raise NotImplementedError(
+        "boto3 sqs.send_message(QueueUrl, MessageBody=json, MessageGroupId, MessageDeduplicationId)")
 
 
 # --------------------------------------------------------------------------- WooCommerce (W3)

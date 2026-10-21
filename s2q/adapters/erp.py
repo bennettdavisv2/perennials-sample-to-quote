@@ -62,7 +62,8 @@ class MockERP:
     def price(self, sku: str, yards: float, is_trade: bool) -> dict:
         item = self.get_item(sku)
         p = price_line(item["list_price"], yards, is_trade, self.pricing)
-        self.log.record("ERP", "Price line", f"{sku} {yards} yd, {'trade' if is_trade else 'non-trade'} -> ${p['line_total']:,.2f}",
+        kind = "trade" if is_trade else "non-trade"
+        self.log.record("ERP", "Price line", f"{sku} {yards} yd, {kind} -> ${p['line_total']:,.2f}",
                         "NetSuite: price level lookup / RESTlet for quote pricing")
         return p
 
@@ -98,9 +99,12 @@ class MockERP:
                 lot = next(l for l in self.lots if l["sku"] == ln["sku"] and l["lot"] == a["lot"])
                 lot["reserved"] += a["yards"]
         self.sales_orders.append(so)
-        desc = "; ".join(f"{ln['sku']} " + ", ".join(f"{a['yards']} yd lot {a['lot']}" for a in ln["allocation"]) for ln in lines)
-        self.log.record("ERP", "Reserve inventory", f"{so['id']} for {quote_id}: {desc}; hold until {so['hold_expires']:%Y-%m-%d}",
-                        "NetSuite REST: POST /record/v1/salesOrder (orderStatus = Pending Approval, inventory detail by lot)")
+        desc = "; ".join(f"{ln['sku']} " + ", ".join(f"{a['yards']} yd lot {a['lot']}" for a in ln["allocation"])
+                         for ln in lines)
+        self.log.record("ERP", "Reserve inventory",
+                        f"{so['id']} for {quote_id}: {desc}; hold until {so['hold_expires']:%Y-%m-%d}",
+                        "NetSuite REST: POST /record/v1/salesOrder "
+                        "(orderStatus = Pending Approval, inventory detail by lot)")
         return so
 
     def release_reservation(self, so_id: str, reason: str):
@@ -139,7 +143,8 @@ class MockERP:
         self.sales_orders.append(so)
         self.log.record("ERP", "Create CFA order", f"{so['id']} for {quote_id}: " +
                         ", ".join(f"{ln['sku']} lot {ln['lot']}" for ln in so["lines"]),
-                        "NetSuite REST: POST /record/v1/salesOrder (custom form = CFA, $0, lot-specific inventory detail)")
+                        "NetSuite REST: POST /record/v1/salesOrder "
+                        "(custom form = CFA, $0, lot-specific inventory detail)")
         return so
 
     def create_sample_order(self, customer_id: str, skus: list[str], ship_to: str, now: datetime) -> dict:

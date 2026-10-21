@@ -100,7 +100,8 @@ class MockCRM:
 
     def update_opportunity(self, opp: dict, **fields):
         opp.update(fields)
-        self.log.record("CRM", "Update opportunity", f"{opp['id']}: " + ", ".join(f"{k}={v}" for k, v in fields.items()),
+        changes = ", ".join(f"{k}={v}" for k, v in fields.items())
+        self.log.record("CRM", "Update opportunity", f"{opp['id']}: {changes}",
                         SF + "PATCH /sobjects/Opportunity/{id}")
 
     # ---------- quotes ----------

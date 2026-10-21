@@ -65,7 +65,7 @@ def render_detail(w, rid: str):
 
     st.markdown("##### What happened")
     nums = [1, 2, 3] if req["type"].lower().startswith("sample") else [4, 5, 6]
-    for col, n in zip(st.columns(3), nums):
+    for col, n in zip(st.columns(3), nums, strict=True):
         stage = res["stages"].get(n, {"status": "n/a", "summary": ""})
         with col.container(border=True, height="stretch"):
             st.markdown(f"**{n}. {STAGES[n]}**")
@@ -131,8 +131,8 @@ def render_detail(w, rid: str):
         st.markdown(f"##### Quote {quote['id']}")
         quote_lines(quote)
         so = next((x for x in w.erp.sales_orders if x["id"] == quote.get("reservation_id")), None)
-        hold = (f"{so['id']} until {so['hold_expires']:%b %d}" + (" (released)" if so["status"].startswith("Released") else "")
-                if so else "none")
+        released = " (released)" if so and so["status"].startswith("Released") else ""
+        hold = f"{so['id']} until {so['hold_expires']:%b %d}{released}" if so else "none"
         st.markdown(md(f"**Total {money(quote['total'])}** · Status: **{quote['status']}** · "
                        f"Valid until {quote['valid_until']:%b %d} · Inventory hold: {hold}"))
 

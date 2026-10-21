@@ -214,15 +214,15 @@ def salesforce(d: Desk):
             lines = []
             for n in range(3):
                 c = st.columns([1.2, 2, 1, 1, 1.2])
-                lines.append({"sku": c[0].text_input("SKU", key=f"ql-s{n}", label_visibility="visible" if n == 0 else "collapsed"),
-                              "description": c[1].text_input("Description", key=f"ql-d{n}",
-                                                             label_visibility="visible" if n == 0 else "collapsed"),
+                vis = "visible" if n == 0 else "collapsed"  # labels on the first row only
+                lines.append({"sku": c[0].text_input("SKU", key=f"ql-s{n}", label_visibility=vis),
+                              "description": c[1].text_input("Description", key=f"ql-d{n}", label_visibility=vis),
                               "yards": c[2].number_input("Yards", min_value=0.0, step=1.0, key=f"ql-y{n}",
-                                                         label_visibility="visible" if n == 0 else "collapsed"),
+                                                         label_visibility=vis),
                               "unit_price": c[3].number_input("$/yd", min_value=0.0, step=0.01, key=f"ql-p{n}",
-                                                              label_visibility="visible" if n == 0 else "collapsed"),
+                                                              label_visibility=vis),
                               "line_total": c[4].number_input("Line total", min_value=0.0, step=0.01, key=f"ql-t{n}",
-                                                              label_visibility="visible" if n == 0 else "collapsed")})
+                                                              label_visibility=vis)})
             a, b = st.columns(2)
             total = a.number_input("Quote total", min_value=0.0, step=0.01)
             valid = b.date_input("Valid until", value=None)
@@ -253,7 +253,8 @@ def netsuite(d: Desk):
         tiers = ", ".join(f"+{p * 100:.0f}% at {y}+ yd" for y, p in sorted(c.volume_tiers))
         st.caption(md(f"Price sheet (pinned PDF on the shared drive): trade {c.trade_discount * 100:.0f}% off list; "
                       f"volume {tiers} (trade only, added to the trade discount); ${c.cut_fee:.0f} cut fee under "
-                      f"{c.cut_fee_under_yards:g} yd; quotes valid {c.quote_valid_days} days; holds {c.hold_days} days."))
+                      f"{c.cut_fee_under_yards:g} yd; quotes valid {c.quote_valid_days} days; "
+                      f"holds {c.hold_days} days."))
     elif view == "Customers":
         table(d.customers, {"ID": "id", "Name": "name", "Email": "email", "Salesforce account": "sf_account",
                             "Price level": "price_level"})
@@ -269,7 +270,8 @@ def netsuite(d: Desk):
                 st.toast("Customer saved")
     else:
         table(d.orders, {"Order": "id", "Form": "form", "Customer": "customer", "Status": "status",
-                         "Lines": lambda o: "; ".join(f"{l['sku']} {l.get('lot') or ''} x{l['qty']:g}" for l in o["lines"]),
+                         "Lines": lambda o: "; ".join(f"{l['sku']} {l.get('lot') or ''} x{l['qty']:g}"
+                                                      for l in o["lines"]),
                          "Memo": "memo"})
         holds = [o for o in d.orders if o["form"] == "Pending hold" and o["status"] != "Released"]
         if holds:

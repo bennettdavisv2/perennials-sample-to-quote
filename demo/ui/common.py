@@ -39,9 +39,9 @@ def money(x) -> str:
     return f"${x:,.2f}"
 
 
-@st.cache_resource(show_spinner="Reading the seeded emails with Claude (once per app run)...")
+@st.cache_resource(show_spinner="Reading the workbook emails with Claude (once per app run)...")
 def _seed_readings(mode: str, model: str, data_mtime: float) -> dict:
-    """Claude's readings of the seeded emails. They never change, so read them once per server run instead of
+    """Claude's readings of the workbook emails. They never change, so read them once per server run instead of
     on every reload / Reset (which took ~11 s and 13 API calls each time). Failed calls aren't cached."""
     w = Workflow(mode=mode)
     return w.extractor.prefetch(w.pending())
@@ -57,7 +57,7 @@ def wf() -> Workflow:
             if w.extractor.llm:
                 readings = _seed_readings(mode, w.extractor.llm.model, os.path.getmtime(DEFAULT_DATA))
                 w.extractor.use_readings(copy.deepcopy(readings))  # each session gets its own copy to work on
-            seed(w)  # seeded history incl. the rep's qualification decisions; live emails still go to Claude
+            seed(w)  # workbook history incl. the rep's qualification decisions; live emails still go to Claude
         st.session_state.wf = w
     return st.session_state.wf
 

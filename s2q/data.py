@@ -48,7 +48,7 @@ def _num(s) -> float:
 def _rows(ws):
     rows = list(ws.iter_rows(values_only=True))
     header = [str(h).strip() for h in rows[0]]
-    return [dict(zip(header, r)) for r in rows[1:] if any(v is not None for v in r)]
+    return [dict(zip(header, r, strict=False)) for r in rows[1:] if any(v is not None for v in r)]
 
 
 def load_workbook(path: str | Path = DEFAULT_DATA) -> dict:

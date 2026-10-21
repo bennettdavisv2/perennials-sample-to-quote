@@ -46,7 +46,8 @@ MANUAL: dict[tuple[str, str], Step | None] = {
     ("CRM", "Update quote"): Step("Sales rep", "Updates the quote status", 1, fields=1),
     ("CRM", "Email quote"): Step("Sales rep", "Writes the quote email and attaches the PDF", 4, emails=1),
     ("CRM", "Create review task"): None,
-    ("CRM", "Email question"): Step("Sales rep", "Writes the customer a clarifying email from scratch", 4, emails=1, waits=1),  # today the person already is the process
+    ("CRM", "Email question"): Step("Sales rep", "Writes the customer a clarifying email from scratch", 4,
+                                    emails=1, waits=1),
     ("ERP", "Create customer"): Step("Order ops", "Rep emails order ops; ops creates the NetSuite customer from the "
                                                   "Salesforce account", 5, fields=8, emails=1, waits=1),
     ("ERP", "Create sample order"): Step("Order ops", "Rep emails order ops; ops retypes the sample request into a "
@@ -57,8 +58,8 @@ MANUAL: dict[tuple[str, str], Step | None] = {
                                                     "enters a pending order", 6, fields=5, emails=1, waits=1),
     ("ERP", "Release reservation"): Step("Order ops", "Rep emails ops to release the old hold (often forgotten)",
                                          3, fields=1, emails=1),
-    ("ERP", "Reinstate reservation"): Step("Order ops", "Re-places a hold that was released for a revision that fell through",
-                                           3, fields=1, emails=1),
+    ("ERP", "Reinstate reservation"): Step("Order ops", "Re-places a hold that was released for a revision that "
+                                                        "fell through", 3, fields=1, emails=1),
     ("ERP", "Create CFA order"): Step("Order ops", "Rep asks the warehouse to cut a CFA from the held lot", 4,
                                       fields=3, emails=1, waits=1),
     ("Human", "Approve"): None,  # a decision a person makes in both worlds (counted on the new side)

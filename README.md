@@ -29,5 +29,5 @@ streamlit run demo/app.py     # demo at http://localhost:8501/
 | [`production-handoff/woocommerce/`](production-handoff/woocommerce/) | Plugin that saves the product-page fields onto the order, and the order webhook setup. |
 | [`production-handoff/integration-service/`](production-handoff/integration-service/) | The AWS service: webhook, Gmail-push and Salesforce-callback handlers, the queue worker, Salesforce / NetSuite adapters, database schema and deployment template. |
 | [`production-handoff/salesforce/`](production-handoff/salesforce/) | Apex lead-convert endpoint, field metadata, and specs for the review queue, approval process and callback Flow. |
-| [`production-handoff/netsuite/`](production-handoff/netsuite/) | Daily hold-expiry script, and the pricing-rule record. |
+| [`production-handoff/netsuite/`](production-handoff/netsuite/) | Pricing RESTlet, daily hold-expiry script, and the pricing-rule record. |
 | [`production-handoff/gmail/`](production-handoff/gmail/) | The watch on quotes@perennialsfabrics.com that pushes new mail to the service. |

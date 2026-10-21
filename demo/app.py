@@ -51,7 +51,8 @@ with st.sidebar:
     start = st.radio("Start from", ["clean", "history"], horizontal=True,
                      format_func={"clean": "Day one", "history": "Workbook history"}.get,
                      help="Day one: NetSuite inventory and prices and the existing Salesforce accounts, nothing "
-                          "processed. Workbook history: the 27 workbook requests already processed, for Q&A and edge cases.")
+                          "processed. Workbook history: the 27 workbook requests already processed, for Q&A and "
+                          "edge cases.")
     if start != st.session_state.get("start", "clean"):
         st.session_state.start = start
         common.reset()

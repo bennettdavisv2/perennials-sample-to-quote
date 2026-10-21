@@ -212,7 +212,8 @@ def test_rejected_new_sender_gets_nothing():
 
 def test_over_limit_drafts_pick_your_ten():
     w = seed(Workflow(mode="rules"))
-    body = next(r for r in w.reviews if r["request"] == "WEB-013" and r["action"] == "place_samples_capped")["message"]["body"]
+    rv = next(r for r in w.reviews if r["request"] == "WEB-013" and r["action"] == "place_samples_capped")
+    body = rv["message"]["body"]
     assert "up to 10" in body and "You picked 14" in body
 
 
@@ -336,7 +337,7 @@ def test_do_not_sell_quote_request_notifies_account_owner():
 
 
 def test_existing_non_trade_account_goes_to_a_rep_even_with_a_contact():
-    """No consumer path any more: a known contact on a non-trade account is qualified by a rep, never quoted directly."""
+    """A known contact on a non-trade account is qualified by a rep, never quoted directly."""
     w = Workflow(mode="rules")
     w.crm.accounts.append({"id": "ACC-0900", "name": "Chris Lee", "type": "Consumer / Retail", "status": "Customer"})
     w.crm.contacts.append({"id": "CON-0900", "account_id": "ACC-0900", "name": "Chris Lee",

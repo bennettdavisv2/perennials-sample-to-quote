@@ -69,7 +69,8 @@ def inbox(w):
     st.markdown("**Received**")
     mails = sorted((r for r in w.inbox if r["channel"] == "Email"), key=lambda r: r["received"], reverse=True)
     table(mails, {"ID": "id", "Received": lambda r: f"{r['received']:%b %d %H:%M}", "From": "name",
-                  "Message": "message", "Result": lambda r: w.results[r["id"]]["outcome"] if r["id"] in w.results else ""})
+                  "Message": "message",
+                  "Result": lambda r: w.results[r["id"]]["outcome"] if r["id"] in w.results else ""})
 
 
 def opportunity(w):
@@ -106,7 +107,8 @@ def opportunity(w):
                 st.caption(md(f"Flag: {fl}"))
     rids = baseline.journeys(w).get(o["account_id"], [])
     st.markdown("**Activity** (every request on this account)")
-    table([w.results[r] for r in rids], {"Request": lambda r: r["request"]["id"], "Type": lambda r: r["request"]["type"],
+    table([w.results[r] for r in rids], {"Request": lambda r: r["request"]["id"],
+                                         "Type": lambda r: r["request"]["type"],
                                          "Received": lambda r: f"{r['request']['received']:%b %d %H:%M}",
                                          "Outcome": "outcome"})
 
